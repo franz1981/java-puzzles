@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: org.agrona:agrona:0.9.12-SNAPSHOT">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/agrona/agrona/0.9.12-SNAPSHOT/agrona-0.9.12-SNAPSHOT.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/org/agrona/agrona/0.9.12-SNAPSHOT/agrona-0.9.12-SNAPSHOT-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/agrona/agrona/0.9.12-SNAPSHOT/agrona-0.9.12-SNAPSHOT-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

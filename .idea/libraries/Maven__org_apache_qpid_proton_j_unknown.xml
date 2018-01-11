@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: org.apache.qpid:proton-j:unknown">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/qpid/proton-j/unknown/proton-j-unknown.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/qpid/proton-j/unknown/proton-j-unknown-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/qpid/proton-j/unknown/proton-j-unknown-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
