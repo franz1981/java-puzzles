@@ -34,7 +34,15 @@ Please remember to kill it or it will kill your CPU!!!!Hot stuff
 It is mostly based on the awesome [Nitsan Wakart article](http://psy-lob-saw.blogspot.it/2015/04/on-arraysfill-intrinsics-superword-and.html) and it helps 
 to understand how most legends around `byte[]` common operations are false and need proper (and correct) measurements. 
 
+## MonomorphicCallSiteBenchmark
 
+It is an attempt to show the best case scenarios (monomorphic call site) with several code patterns:
+- `getDefaultId`: `default` method call with single interface/implementor
+- `getInterfaceId`: call of a method declared on an interface
+- `getAbstractId`: call of an abstract method declared on an abstract class, but implemented on a concrete one
+- `getId`: call of a (final) method declared and implemented on an abstract class
+
+A better and much deeper explanation could be found here: https://shipilev.net/blog/2015/black-magic-method-dispatch/#_monomorphic_cases
 
  
 

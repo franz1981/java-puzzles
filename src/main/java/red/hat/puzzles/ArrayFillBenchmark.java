@@ -44,6 +44,7 @@ import java.util.concurrent.TimeUnit;
 @OutputTimeUnit(TimeUnit.SECONDS)
 @Warmup(iterations = 5, time = 1)
 @Measurement(iterations = 5, time = 1)
+@Fork(2)
 public class ArrayFillBenchmark {
 
     public static final Unsafe UNSAFE;
@@ -142,9 +143,6 @@ public class ArrayFillBenchmark {
         final Options opt = new OptionsBuilder()
                 .include(benchmarkClass.getSimpleName())
                 .addProfiler(LinuxPerfAsmProfiler.class)
-                .warmupIterations(5)
-                .measurementIterations(5)
-                .forks(1)
                 .build();
         new Runner(opt).run();
     }
