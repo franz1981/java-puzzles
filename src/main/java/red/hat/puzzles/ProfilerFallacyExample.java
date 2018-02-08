@@ -30,6 +30,11 @@ public class ProfilerFallacyExample {
     private static final int WORKS = 1000;
 
     /**
+     * JVisualVM:
+     *
+     * Run with -XX:+PrintGCApplicationStoppedTime to see all the safepoints added by JVisualVM: it will causes
+     * accelerate aging of instances with subsequent moving of young instances into the tenured space...FULL GCs are awaiting :(
+     *
      * perf-map-agent instructions:
      * <p>
      * Run me with: -XX:+PreserveFramePointer -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints
