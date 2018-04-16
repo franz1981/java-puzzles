@@ -22,6 +22,7 @@ import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.runner.RunnerException;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.Throughput)
@@ -31,47 +32,55 @@ import java.util.concurrent.TimeUnit;
 @Fork(2)
 public class AnonymousRunnableBenchmark {
 
-    private static final int WORK = 1;
+    private AtomicReference<Runnable> taskHolder;
 
     private static final class BlackHoleRunnable implements Runnable {
 
-        private BlackHoleRunnable() {
+        private final Blackhole bh;
+
+        private BlackHoleRunnable(Blackhole bh) {
+            this.bh = bh;
         }
 
         @Override
         public void run() {
-            Blackhole.consumeCPU(WORK);
+            bh.consume(this);
         }
     }
 
+    @Setup
+    public void init() {
+        taskHolder = new AtomicReference<>();
+    }
+
     @Benchmark
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    public Runnable anonymousRunnable() {
+    public void anonymousRunnable(Blackhole bh) {
         final Runnable task = new Runnable() {
             @Override
             public void run() {
-                Blackhole.consumeCPU(WORK);
+                bh.consume(this);
             }
         };
-        task.run();
-        return task;
+        taskHolder.lazySet(task);
+        taskHolder.get().run();
     }
 
     @Benchmark
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    public Runnable customRunnable() {
-        final Runnable task = new BlackHoleRunnable();
-        task.run();
-        return task;
+    public void customRunnable(Blackhole bh) {
+        final Runnable task = new BlackHoleRunnable(bh);
+        taskHolder.lazySet(task);
+        taskHolder.get().run();
     }
 
 
     @Benchmark
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    public Runnable lambda() {
-        final Runnable task = () -> Blackhole.consumeCPU(WORK);
-        task.run();
-        return task;
+    public void lambda(Blackhole bh) {
+        final Runnable task = () -> bh.consume(this);
+        taskHolder.lazySet(task);
+        taskHolder.get().run();
     }
 
 
