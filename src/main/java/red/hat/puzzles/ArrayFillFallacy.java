@@ -27,13 +27,17 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * It has been explained here: https://github.com/jvm-profiling-tools/async-profiler/issues/127
+ */
+
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
 @Warmup(iterations = 10, time = 1)
 @Measurement(iterations = 15, time = 1)
 @Fork(1)
-public class InlineSkidFallacy {
+public class ArrayFillFallacy {
 
     @Param("1000")
     int size;
@@ -65,7 +69,7 @@ public class InlineSkidFallacy {
 
     public static void main(String[] args) throws RunnerException {
         final Options opt = new OptionsBuilder()
-                .include(InlineSkidFallacy.class.getSimpleName())
+                .include(ArrayFillFallacy.class.getSimpleName())
                 .jvmArgs("-XX:+UnlockDiagnosticVMOptions",
                          "-XX:+DebugNonSafepoints",
                          "-XX:+PreserveFramePointer")
