@@ -57,7 +57,7 @@ public class SafepointBiasFailure {
             b += bytes[i];
         }
         result = b == 0;
-        //No safepoint poll here, but {poll}
+        //No safepoint poll here (is inlined), the first {poll}
         //will be on the caller loop back edge:
         //the instruction next the poll will take
         //all the blame!!!
@@ -71,7 +71,7 @@ public class SafepointBiasFailure {
             b += bytes[i];
         }
         result = b == 0;
-        //{poll_exit} here
+        //{poll_return} here
         //the call-site of this method will take all the blame
         //instead of the method!!!
     }
@@ -99,7 +99,7 @@ public class SafepointBiasFailure {
         //No safepoint poll here
         setResultInlined(b == 0);
         //this method will take all the blame because it will be the caller
-        //of a method containing a {poll_exit}
+        //of a method containing a {poll_return}
     }
 
     private void setResultInlined(boolean b) {
@@ -110,7 +110,7 @@ public class SafepointBiasFailure {
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     private void setResultNotInlined(boolean b) {
         result = b;
-        //{poll_exit} here: the call-site will be blamed
+        //{poll_return} here: the call-site will be blamed
     }
 
     public static void main(String[] args) throws RunnerException {

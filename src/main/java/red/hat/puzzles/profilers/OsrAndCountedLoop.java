@@ -21,26 +21,31 @@ public class OsrAndCountedLoop {
 
     public static void main(String[] args) throws InterruptedException {
         //please run me with: -XX:+PrintCompilation -XX:+PrintGCApplicationStoppedTime
-        final boolean justOSR = false;
-        if (!justOSR) {
+        final boolean OSR = false;
+        if (!OSR) {
             for (int i = 0; i < 100000; i++) {
                 doSomethingCounted(10);
             }
         }
         Thread t = new Thread(() -> {
-            //if !justOSR it will call the C2 compiled version without safepoint polls
+            //if !OSR the {poll_return} will "never" be hit, hanging the JVM
+            //uncapable to reach a safepoint
             long l = doSomethingCounted(Integer.MAX_VALUE);
             System.out.println("I swear I'm not dead code! " + l);
         });
         t.setDaemon(true);
         t.start();
-        //just to have some fun: GC will EVER happen? :)
+        //just to have some more fun: GC will EVER happen? :)
         System.gc();
         Thread.sleep(5000);
     }
 
-    //OSR will treat it as a non-counted loop:
-    //"for (int j = 0; j < 2; j++)" block will be compiled (with a {poll}) on OSR
+    //If not warmed up OSR C2/Level 4 will compile the method on Thread::run as an uncounted loop(s),
+    //by adding safepoint {poll}s that allow it to be interrupted.
+    //
+    //If warmed up, C2/Level 4 will compile it as a counted loop
+    //that will not be inlined on Thread::run (that's interpreted/cold).
+    //Without being inlined, it will contains just a {poll_return} on method exit.
     private static long doSomethingCounted(int limit) {
         long k = 0;
         for (int l = 0; l < limit; l++) {
@@ -51,7 +56,6 @@ public class OsrAndCountedLoop {
                         k += l;
                 }
             }
-
         }
         return k;
     }

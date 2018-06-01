@@ -77,20 +77,20 @@ public class ProfilerFallacyExample {
         System.out.println("timeToSafepoint tokens = " + timeToSafepoint);
         WORKS = timeToSafepoint;
         BYTES = new byte[1024 * 1024];
-        //warmup and compilation of methods
+        //warmup and compilation of methods (avoid OSR)
         for (int i = 0; i < 100000; i++) {
             blameJustUncounted(1);
         }
         for (int i = 0; i < 100000; i++) {
-            doIntrinsicAndBlameTheCallerOfThePollExit();
+            doIntrinsicAndBlameThePollReturnOwner();
         }
         for (int i = 0; i < 100000; i++) {
-            doCountedAndBlameTheCallerOfThePollExit(1);
+            doCountedAndBlameThePollReturnOwner(1);
         }
         //end warmup
         final ExecutorService executorService = Executors.newCachedThreadPool();
         executorService.submit(ProfilerFallacyExample::blameJustUncountedLoop);
-        executorService.submit(ProfilerFallacyExample::blameTheWrongMethodInsteadOfNativeLoop);
+        executorService.submit(ProfilerFallacyExample::blameTheWrongMethodInsteadOfIntrinsicLoop);
         executorService.submit(ProfilerFallacyExample::blameTheWrongMethodInsteadOfTheCountedLoop);
         executorService.submit(ProfilerFallacyExample::sleepOneSecondLoop);
         System.out.println("Press any key to stop, but wait OSR to happen before start profiling with perf...");
@@ -118,8 +118,9 @@ public class ProfilerFallacyExample {
 
     private static void blameJustUncounted(long works) {
         countedLoop((int)works);
+        //no poll or poll_return on countedLoop
         //consumeCPU will be inlined and it will be blamed
-        //for everything because it contains the last poll on it
+        //for everything because it contains the only polls
         Blackhole.consumeCPU(works);
     }
 
@@ -188,30 +189,30 @@ public class ProfilerFallacyExample {
         }
     }
 
-    private static void blameTheWrongMethodInsteadOfNativeLoop() {
+    private static void blameTheWrongMethodInsteadOfIntrinsicLoop() {
         while (!Thread.currentThread().isInterrupted()) {
-            doIntrinsicAndBlameTheCallerOfThePollExit();
+            doIntrinsicAndBlameThePollReturnOwner();
         }
     }
 
-    private static void doIntrinsicAndBlameTheCallerOfThePollExit() {
+    private static void doIntrinsicAndBlameThePollReturnOwner() {
         //http://hg.openjdk.java.net/jdk8/jdk8/hotspot/file/87ee5ee27509/src/share/vm/classfile/vmSymbols.hpp#l708
         System.arraycopy(BYTES, 0, BYTES, 0, BYTES.length);
-        //no poll or exit poll on intrinsic
+        //no poll or poll_return on intrinsic
         blameMePlease();
     }
 
     private static void blameTheWrongMethodInsteadOfTheCountedLoop() {
         long k = 0;
         while (!Thread.currentThread().isInterrupted()) {
-            doCountedAndBlameTheCallerOfThePollExit(100);
+            doCountedAndBlameThePollReturnOwner(100);
         }
         System.out.println(k);
     }
 
-    private static void doCountedAndBlameTheCallerOfThePollExit(int limit){
+    private static void doCountedAndBlameThePollReturnOwner(int limit){
         countedLoop(limit);
-        //no poll or exit poll on countedLoop
+        //no poll or poll_return on countedLoop
         blameMePlease();
     }
 
@@ -231,6 +232,7 @@ public class ProfilerFallacyExample {
             }
 
         }
+        //{poll_return}: will loose it if inlined
         return k;
     }
 }
