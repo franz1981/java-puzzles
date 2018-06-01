@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package red.hat.puzzles;
+package red.hat.puzzles.profilers;
 
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.profile.LinuxPerfAsmProfiler;
@@ -29,6 +29,8 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * It has been explained here: https://github.com/jvm-profiling-tools/async-profiler/issues/127
+ * It is an issue of JDK 8/9 that do not report correctly the BCI of Arrays::fill native body (ie arrayof_jbyte_fill),
+ * wrongly attributing it to blameMePlease@-1.
  */
 
 @State(Scope.Benchmark)

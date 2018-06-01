@@ -15,12 +15,11 @@
  * limitations under the License.
  */
 
-package red.hat.puzzles;
+package red.hat.puzzles.profilers;
 
 import org.openjdk.jmh.infra.Blackhole;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -83,7 +82,7 @@ public class ProfilerFallacyExample {
             blameJustUncounted(1);
         }
         for (int i = 0; i < 100000; i++) {
-            doNativeAndBlameTheCallerOfThePollExit(i);
+            doIntrinsicAndBlameTheCallerOfThePollExit();
         }
         for (int i = 0; i < 100000; i++) {
             doCountedAndBlameTheCallerOfThePollExit(1);
@@ -190,15 +189,15 @@ public class ProfilerFallacyExample {
     }
 
     private static void blameTheWrongMethodInsteadOfNativeLoop() {
-        long v = 0;
         while (!Thread.currentThread().isInterrupted()) {
-            doNativeAndBlameTheCallerOfThePollExit(v);
-            v++;
+            doIntrinsicAndBlameTheCallerOfThePollExit();
         }
     }
 
-    private static void doNativeAndBlameTheCallerOfThePollExit(long v) {
-        Arrays.fill(BYTES, (byte) v);
+    private static void doIntrinsicAndBlameTheCallerOfThePollExit() {
+        //http://hg.openjdk.java.net/jdk8/jdk8/hotspot/file/87ee5ee27509/src/share/vm/classfile/vmSymbols.hpp#l708
+        System.arraycopy(BYTES, 0, BYTES, 0, BYTES.length);
+        //no poll or exit poll on intrinsic
         blameMePlease();
     }
 

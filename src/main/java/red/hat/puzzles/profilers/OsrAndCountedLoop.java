@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package red.hat.puzzles;
+package red.hat.puzzles.profilers;
 
 public class OsrAndCountedLoop {
 
