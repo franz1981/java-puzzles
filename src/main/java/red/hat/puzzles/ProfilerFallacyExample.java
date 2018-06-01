@@ -23,23 +23,35 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
 public class ProfilerFallacyExample {
 
-    private static final int WORKS = 1000;
+    private static int WORKS;
 
     /**
      * JVisualVM:
      * <p>
-     * Run with -XX:+PrintGCApplicationStoppedTime to see all the safepoints added by JVisualVM: it will causes
-     * accelerate aging of instances with subsequent moving of young instances into the tenured space...FULL GCs are awaiting :(
+     * Run with -XX:+PrintGCApplicationStoppedTime to see all TTSP added by JVisualVM.
+     * <p>
+     * Start the tool with:
+     * $ jvisualvm
+     * <p>
+     * Notes:
+     * <p>
+     * -self time           counts the total time spent in that method own code (no other method calls),
+     *                      including the amount of time spent on locks or other blocking behaviour
+     * -self time (cpu)     counts the total time spent in that method own code (no other method calls),
+     *                      excluding the amount of time the thread was blocked
+     * -total time          counts the total time spent in that method (with other method calls),
+     *                      including the amount of time spent on locks or other blocking behaviour
+     * -total time (cpu)    counts the total time spent in that method (with other method calls),
+     *                      excluding the amount of time spent on locks or other blocking behaviour
      * <p>
      * perf-map-agent instructions:
      * <p>
      * Run me with: -XX:+PreserveFramePointer -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints
-     * <p>
-     * $ jvisualvm
      * <p>
      * $ jps
      * Take the process pid and use it with:
@@ -53,75 +65,173 @@ public class ProfilerFallacyExample {
      * $ firefox <flamegraph file>
      */
 
-    private static final byte[] bytes = new byte[1024 * 1024];
-    private static final Object MEDIUM_LOCK = new Object();
+    private static byte[] BYTES;
 
     public static void main(String[] args) throws IOException {
+        //tuning the work to be done on countedLoop will force the safepoint poll after it
+        //to be delayed, making all the other threads to wait to reach the global safepoint:
+        //you can see on the GC logs that "Stopping threads took: *** seconds" is directly proportional to it.
+        int timeToSafepoint = 1000;
+        if (args.length > 0) {
+            timeToSafepoint = Integer.parseInt(args[0]);
+        }
+        System.out.println("timeToSafepoint tokens = " + timeToSafepoint);
+        WORKS = timeToSafepoint;
+        BYTES = new byte[1024 * 1024];
+        //warmup and compilation of methods
+        for (int i = 0; i < 100000; i++) {
+            blameJustUncounted(1);
+        }
+        for (int i = 0; i < 100000; i++) {
+            doNativeAndBlameTheCallerOfThePollExit(i);
+        }
+        for (int i = 0; i < 100000; i++) {
+            doCountedAndBlameTheCallerOfThePollExit(1);
+        }
+        //end warmup
         final ExecutorService executorService = Executors.newCachedThreadPool();
-        executorService.submit(ProfilerFallacyExample::smallPark);
-        executorService.submit(ProfilerFallacyExample::mediumParkWithLock);
-        executorService.submit(ProfilerFallacyExample::mediumParkWithLock);
-        executorService.submit(ProfilerFallacyExample::longPark);
-        executorService.submit(ProfilerFallacyExample::doSomethingUncounted);
-        executorService.submit(ProfilerFallacyExample::doSomethingHeavyNative);
+        executorService.submit(ProfilerFallacyExample::blameJustUncountedLoop);
+        executorService.submit(ProfilerFallacyExample::blameTheWrongMethodInsteadOfNativeLoop);
+        executorService.submit(ProfilerFallacyExample::blameTheWrongMethodInsteadOfTheCountedLoop);
+        executorService.submit(ProfilerFallacyExample::sleepOneSecondLoop);
         System.out.println("Press any key to stop, but wait OSR to happen before start profiling with perf...");
         System.in.read();
         executorService.shutdownNow();
-        //TBH the JVM can't perform dead code elimination of doSomethingHeavyNative thanks to JLS on array assignments, but..better safe than sorry...
-        System.out.println(bytes);
+        System.out.println(BYTES);
     }
 
-    private static void mediumParkWithLock() {
-        Thread.currentThread().setName("mediumParkWithLock");
+    /**
+     * It should be visible on JVisualVM but not on hybrid/native profilers
+     */
+    private static void sleepOneSecondLoop() {
+        final long oneSecInNanos = TimeUnit.SECONDS.toNanos(1);
         while (!Thread.currentThread().isInterrupted()) {
-            synchronized (MEDIUM_LOCK) {
-                //1 seconds: which one could see it and how? it makes sense?
-                //hint: please read https://docs.oracle.com/javase/8/docs/api/java/lang/Thread.State.html#RUNNABLE
-                //JVM TI profilers will see it as a time consuming method just because waiting for CPU time due to lock contention
-                //is considered a RUNNABLE ie active state
-                LockSupport.parkNanos(1_000_000_000L);
+            //sometime it could fails before having reached the deadline
+            LockSupport.parkNanos(oneSecInNanos);
+        }
+    }
+
+    private static void blameJustUncountedLoop() {
+        while (!Thread.currentThread().isInterrupted()) {
+            blameJustUncounted(WORKS);
+        }
+    }
+
+    private static void blameJustUncounted(long works) {
+        countedLoop((int)works);
+        //consumeCPU will be inlined and it will be blamed
+        //for everything because it contains the last poll on it
+        Blackhole.consumeCPU(works);
+    }
+
+    private static final boolean ENABLE_LOGGING = Boolean.getBoolean("safiansgfdugan");
+
+    private static void handWrittenNotInlineableCall() {
+        if (ENABLE_LOGGING) {
+            final long b = System.nanoTime();
+            //long logic to create the String used for logging
+            final StringBuilder builder = new StringBuilder();
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            builder.append(b);
+            System.out.println(builder);
+        }
+    }
+
+    private static void blameTheWrongMethodInsteadOfNativeLoop() {
+        long v = 0;
+        while (!Thread.currentThread().isInterrupted()) {
+            doNativeAndBlameTheCallerOfThePollExit(v);
+            v++;
+        }
+    }
+
+    private static void doNativeAndBlameTheCallerOfThePollExit(long v) {
+        Arrays.fill(BYTES, (byte) v);
+        blameMePlease();
+    }
+
+    private static void blameTheWrongMethodInsteadOfTheCountedLoop() {
+        long k = 0;
+        while (!Thread.currentThread().isInterrupted()) {
+            doCountedAndBlameTheCallerOfThePollExit(100);
+        }
+        System.out.println(k);
+    }
+
+    private static void doCountedAndBlameTheCallerOfThePollExit(int limit){
+        countedLoop(limit);
+        //no poll or exit poll on countedLoop
+        blameMePlease();
+    }
+
+    private static void blameMePlease() {
+        handWrittenNotInlineableCall();
+    }
+
+    private static long countedLoop(int limit) {
+        long k = 0;
+        for (int l = 0; l < limit; l++) {
+            for (int i = 0; i < limit; i++) {
+                for (int j = 0; j < 2; j++) {
+                    k++;
+                    if ((k % 2) == 1)
+                        k += l;
+                }
             }
-        }
-    }
 
-    private static void longPark() {
-        Thread.currentThread().setName("longPark");
-        while (!Thread.currentThread().isInterrupted()) {
-            //100 seconds: which one could see it and how? it makes sense?
-            //hint: please read https://docs.oracle.com/javase/8/docs/api/java/lang/Thread.State.html#RUNNABLE
-            LockSupport.parkNanos(100_000_000_000L);
         }
-    }
-
-    private static void smallPark() {
-        Thread.currentThread().setName("smallPark");
-        //it is supposed to consume real CPU BUT
-        //it is stealth to most JVM TI (JVM Tool Interface) based profiler due to:
-        // - sample bias (interval is coordinated with the park call rate)
-        // - parks is resolved with a native call (ie a native call stack isn't a Java stack anymore)
-        // - safepoint bias (it can take samples only at safepoint: http://blog.ragozin.info/2012/10/safepoints-in-hotspot-jvm.html)
-        while (!Thread.currentThread().isInterrupted()) {
-            LockSupport.parkNanos(1);
-        }
-    }
-
-    private static void doSomethingUncounted() {
-        Thread.currentThread().setName("doSomethingUncounted");
-        //It MUST NOT be completly stealth on JVM TI profilers BUT maybe sample bias could make it less heavy than expected :(
-        //NOTE: Blackhole::consumeCPU implementation force the JVM to put a safepoint on each iteration of its main loop
-        while (!Thread.currentThread().isInterrupted()) {
-            Blackhole.consumeCPU(WORKS);
-        }
-    }
-
-    private static void doSomethingHeavyNative() {
-        Thread.currentThread().setName("doSomethingHeavyNative");
-        //AsyncGetCallTrace ones won't see it due to the presence of well hidden long native calls (ArrayFillBenchmark show it).
-        //Commons AGCT based profiler (JFR) will fall due to things like this: https://bugs.openjdk.java.net/browse/JDK-8178287 (ie CPU time not computed due to samples loss)
-
-        //JVMTI ones couldn't see it due to safepoint bias on very long native call
-        while (!Thread.currentThread().isInterrupted()) {
-            Arrays.fill(bytes, (byte) (System.nanoTime()));
-        }
+        return k;
     }
 }
