@@ -30,10 +30,16 @@ public class ProfilerFallacyExample {
     private static int WORKS;
 
     /**
+     * Run it with:
+     * -XX:+PrintGCApplicationStoppedTime -XX:+PrintSafepointStatistics     to allow spot observer effects, safepoint bias
+     * -XX:-UseBiasedLocking -XX:-UseCounterDecay                           to allow compilations to be more deterministic
+     * -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints               to allow async-profiler, perf-java-flames to work with inlined calls
+     * -XX:+PreserveFramePointer                                            to allow perf-java-flames to work
+     *
      * JVisualVM:
-     * <p>
-     * Run with -XX:+PrintGCApplicationStoppedTime to see all TTSP added by JVisualVM.
-     * <p>
+     *
+     * -XX:+PrintGCApplicationStoppedTime -XX:+PrintSafepointStatistics -XX:-UseBiasedLocking -XX:-UseCounterDecay
+     *
      * Start the tool with:
      * $ jvisualvm
      * <p>
@@ -50,7 +56,7 @@ public class ProfilerFallacyExample {
      * <p>
      * perf-map-agent instructions:
      * <p>
-     * Run me with: -XX:+PreserveFramePointer -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints
+     * -XX:+PreserveFramePointer -XX:+PrintGCApplicationStoppedTime -XX:+PrintSafepointStatistics -XX:-UseBiasedLocking -XX:-UseCounterDecay -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints
      * <p>
      * $ jps
      * Take the process pid and use it with:
@@ -116,8 +122,8 @@ public class ProfilerFallacyExample {
         }
     }
 
-    private static void blameJustUncounted(long works) {
-        countedLoop((int)works);
+    private static void blameJustUncounted(int works) {
+        countedLoop(works);
         //no poll or poll_return on countedLoop
         //consumeCPU will be inlined and it will be blamed
         //for everything because it contains the only polls

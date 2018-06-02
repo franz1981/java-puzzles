@@ -20,9 +20,16 @@ package red.hat.puzzles.profilers;
 public class OsrAndCountedLoop {
 
     public static void main(String[] args) throws InterruptedException {
-        //please run me with: -XX:+PrintCompilation -XX:+PrintGCApplicationStoppedTime
+        //please run me with:
+        //-XX:+PrintCompilation -XX:+PrintGCApplicationStoppedTime -XX:+PrintSafepointStatistics -XX:-UseBiasedLocking -XX:-UseCounterDecay
         final boolean OSR = false;
         if (!OSR) {
+            //JDK8 Compiler threshold policy (tiered compilation):
+            //- http://hg.openjdk.java.net/jdk8u/jdk8u/hotspot/file/2b2511bd3cc8/src/share/vm/runtime/advancedThresholdPolicy.hpp#l34
+            //Cliff Click on OSR and warmup code:
+            //- http://cliffc.org/blog/2011/11/22/what-the-heck-is-osr-and-why-is-it-bad-or-good/
+            //J. Bempel on how compiler threshold works:
+            //http://jpbempel.blogspot.com/2013/04/compilethreshold-is-relative.html
             for (int i = 0; i < 100000; i++) {
                 doSomethingCounted(10);
             }
