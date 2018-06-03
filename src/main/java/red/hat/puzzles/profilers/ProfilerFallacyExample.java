@@ -30,7 +30,7 @@ public class ProfilerFallacyExample {
     private static int WORKS;
 
     /**
-     * Run it with:
+     * JVM args:
      * -XX:+PrintGCApplicationStoppedTime -XX:+PrintSafepointStatistics     to allow spot observer effects, safepoint bias
      * -XX:-UseBiasedLocking -XX:-UseCounterDecay                           to allow compilations to be more deterministic
      * -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints               to allow async-profiler, perf-java-flames to work with inlined calls
