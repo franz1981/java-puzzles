@@ -30,7 +30,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
@@ -44,7 +46,7 @@ public class SingleBurstBenchmark {
 
     @Param({"blocking", "spin"})
     private String providerFutureType;
-    @Param({"jctools"})
+    @Param({"jctools-park", "jctools-lock", "scheduled", "fj"})
     private String executorType;
 
     private Supplier<? extends AsyncResult> asyncResultFactory;
@@ -69,42 +71,42 @@ public class SingleBurstBenchmark {
             case "fj":
                 executorService = new ForkJoinPool(1);
                 break;
-            case "jctools":
+            case "jctools-lock":
                 executorService = new ExecutorService() {
 
-                private final Queue<Runnable> tasks = new MpscArrayQueue<>(64);
-                private final ReentrantLock lock = new ReentrantLock();
-                private final Condition condition = lock.newCondition();
-                private volatile boolean running = true;
-                private final Thread executorThread = new Thread(() -> {
-                    do {
-                        running = true;
-                        Runnable task;
-                        while ((task = tasks.poll()) != null) {
-                            try {
-                                task.run();
-                            } catch (Throwable t) {
-                                t.printStackTrace();
-                            }
-                        }
-                        running = false;
-                        lock.lock();
-                        try {
-                            if (tasks.isEmpty()) {
+                    private final Queue<Runnable> tasks = new MpscArrayQueue<>(64);
+                    private final ReentrantLock lock = new ReentrantLock();
+                    private final Condition condition = lock.newCondition();
+                    private volatile boolean running = true;
+                    private final Thread executorThread = new Thread(() -> {
+                        do {
+                            running = true;
+                            Runnable task;
+                            while ((task = tasks.poll()) != null) {
                                 try {
-                                    condition.await();
-                                } catch (InterruptedException e) {
-                                    Thread.currentThread().interrupt();
-                                    //NOOP
+                                    task.run();
+                                } catch (Throwable t) {
+                                    t.printStackTrace();
                                 }
                             }
-                        } finally {
-                            lock.unlock();
-                        }
-                    } while (!Thread.interrupted());
-                    //simple eh? :P
-                    tasks.clear();
-                });
+                            running = false;
+                            lock.lock();
+                            try {
+                                if (tasks.isEmpty()) {
+                                    try {
+                                        condition.await();
+                                    } catch (InterruptedException e) {
+                                        Thread.currentThread().interrupt();
+                                        //NOOP
+                                    }
+                                }
+                            } finally {
+                                lock.unlock();
+                            }
+                        } while (!Thread.interrupted());
+                        //simple eh? :P
+                        tasks.clear();
+                    });
 
                     {
                         executorThread.start();
@@ -152,17 +154,6 @@ public class SingleBurstBenchmark {
 
                     @Override
                     public Future<?> submit(Runnable task) {
-                        if (!tasks.offer(task)) {
-                            throw new RejectedExecutionException("back-pressured?");
-                        }
-                        if (!running) {
-                            lock.lock();
-                            try {
-                                condition.signal();
-                            } finally {
-                                lock.unlock();
-                            }
-                        }
                         return null;
                     }
 
@@ -188,7 +179,125 @@ public class SingleBurstBenchmark {
 
                     @Override
                     public void execute(Runnable command) {
+                        if (!tasks.offer(command)) {
+                            throw new RejectedExecutionException("back-pressured?");
+                        }
+                        if (!running) {
+                            lock.lock();
+                            try {
+                                condition.signal();
+                            } finally {
+                                lock.unlock();
+                            }
+                        }
+                    }
+                };
+                break;
+            case "jctools-park":
+                executorService = new ExecutorService() {
 
+                    private final Queue<Runnable> tasks = new MpscArrayQueue<>(64);
+                    private final AtomicReference<Thread> parkedThread = new AtomicReference<>();
+                    private final Thread executorThread = new Thread(() -> {
+                        final Thread currentThread = Thread.currentThread();
+                        do {
+                            parkedThread.set(null);
+                            Runnable task;
+                            while ((task = tasks.poll()) != null) {
+                                try {
+                                    task.run();
+                                } catch (Throwable t) {
+                                    t.printStackTrace();
+                                }
+                            }
+                            parkedThread.set(currentThread);
+                            if (tasks.isEmpty()) {
+                                LockSupport.park();
+                            }
+                        } while (!Thread.interrupted());
+                        parkedThread.set(null);
+                        //simple eh? :P
+                        tasks.clear();
+                    });
+
+                    {
+                        executorThread.start();
+                    }
+
+                    @Override
+                    public void shutdown() {
+                        executorThread.interrupt();
+                        try {
+                            executorThread.join();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                    @Override
+                    public List<Runnable> shutdownNow() {
+                        return null;
+                    }
+
+                    @Override
+                    public boolean isShutdown() {
+                        return false;
+                    }
+
+                    @Override
+                    public boolean isTerminated() {
+                        return false;
+                    }
+
+                    @Override
+                    public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+                        return false;
+                    }
+
+                    @Override
+                    public <T> Future<T> submit(Callable<T> task) {
+                        return null;
+                    }
+
+                    @Override
+                    public <T> Future<T> submit(Runnable task, T result) {
+                        return null;
+                    }
+
+                    @Override
+                    public Future<?> submit(Runnable task) {
+                        return null;
+                    }
+
+                    @Override
+                    public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks) throws InterruptedException {
+                        return null;
+                    }
+
+                    @Override
+                    public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException {
+                        return null;
+                    }
+
+                    @Override
+                    public <T> T invokeAny(Collection<? extends Callable<T>> tasks) throws InterruptedException, ExecutionException {
+                        return null;
+                    }
+
+                    @Override
+                    public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+                        return null;
+                    }
+
+                    @Override
+                    public void execute(Runnable command) {
+                        if (!tasks.offer(command)) {
+                            throw new RejectedExecutionException("back-pressured?");
+                        }
+                        final Thread parked = parkedThread.get();
+                        if (parked != null) {
+                            LockSupport.unpark(parked);
+                        }
                     }
                 };
                 break;
@@ -198,7 +307,7 @@ public class SingleBurstBenchmark {
     @Benchmark
     public void singleBurst(Blackhole bh) throws IOException, InterruptedException {
         final AsyncResult asyncResult = asyncResultFactory.get();
-        executorService.submit(asyncResult::onSuccess);
+        executorService.execute(asyncResult::onSuccess);
         asyncResult.sync();
     }
 
