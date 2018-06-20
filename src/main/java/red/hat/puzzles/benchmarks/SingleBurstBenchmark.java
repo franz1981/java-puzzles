@@ -305,7 +305,7 @@ public class SingleBurstBenchmark {
     }
 
     @Benchmark
-    public void singleBurst(Blackhole bh) throws IOException, InterruptedException {
+    public void singleBurst() throws IOException, InterruptedException {
         final AsyncResult asyncResult = asyncResultFactory.get();
         executorService.execute(asyncResult::onSuccess);
         asyncResult.sync();
