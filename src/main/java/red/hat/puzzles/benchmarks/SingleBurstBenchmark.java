@@ -46,7 +46,7 @@ public class SingleBurstBenchmark {
 
     @Param({"blocking", "spin"})
     private String providerFutureType;
-    @Param({"jctools-park", "jctools-lock", "scheduled", "fj"})
+    @Param({"jctools-lock","jctools-park", "scheduled", "fj"})
     private String executorType;
 
     private Supplier<? extends AsyncResult> asyncResultFactory;
@@ -90,6 +90,9 @@ public class SingleBurstBenchmark {
                                 }
                             }
                             running = false;
+                            if (!tasks.isEmpty()) {
+                                continue;
+                            }
                             lock.lock();
                             try {
                                 if (tasks.isEmpty()) {
