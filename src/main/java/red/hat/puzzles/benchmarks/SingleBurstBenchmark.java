@@ -17,8 +17,7 @@
 
 package red.hat.puzzles.benchmarks;
 
-import org.jctools.queues.MessagePassingQueue;
-import org.jctools.queues.SpscArrayQueue;
+import org.jctools.queues.MpscArrayQueue;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.runner.Runner;
@@ -29,7 +28,10 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.*;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
 @State(Scope.Benchmark)
@@ -42,7 +44,7 @@ public class SingleBurstBenchmark {
 
     @Param({"blocking", "spin"})
     private String providerFutureType;
-    @Param({"scheduled", "fj", "jctools"})
+    @Param({"jctools"})
     private String executorType;
 
     private Supplier<? extends AsyncResult> asyncResultFactory;
@@ -70,16 +72,39 @@ public class SingleBurstBenchmark {
             case "jctools":
                 executorService = new ExecutorService() {
 
-                    private final SpscArrayQueue<Runnable> tasks = new SpscArrayQueue<>(64);
-                    private final Thread executorThread = new Thread(() -> {
-                        final MessagePassingQueue.Consumer<Runnable> consumer = Runnable::run;
-
-                        while (!Thread.interrupted()) {
-                            while (tasks.drain(consumer) > 0) ;
+                private final Queue<Runnable> tasks = new MpscArrayQueue<>(64);
+                private final ReentrantLock lock = new ReentrantLock();
+                private final Condition condition = lock.newCondition();
+                private volatile boolean running = true;
+                private final Thread executorThread = new Thread(() -> {
+                    do {
+                        running = true;
+                        Runnable task;
+                        while ((task = tasks.poll()) != null) {
+                            try {
+                                task.run();
+                            } catch (Throwable t) {
+                                t.printStackTrace();
+                            }
                         }
-                        //simple eh? :P
-                        tasks.clear();
-                    });
+                        running = false;
+                        lock.lock();
+                        try {
+                            if (tasks.isEmpty()) {
+                                try {
+                                    condition.await();
+                                } catch (InterruptedException e) {
+                                    Thread.currentThread().interrupt();
+                                    //NOOP
+                                }
+                            }
+                        } finally {
+                            lock.unlock();
+                        }
+                    } while (!Thread.interrupted());
+                    //simple eh? :P
+                    tasks.clear();
+                });
 
                     {
                         executorThread.start();
@@ -130,6 +155,14 @@ public class SingleBurstBenchmark {
                         if (!tasks.offer(task)) {
                             throw new RejectedExecutionException("back-pressured?");
                         }
+                        if (!running) {
+                            lock.lock();
+                            try {
+                                condition.signal();
+                            } finally {
+                                lock.unlock();
+                            }
+                        }
                         return null;
                     }
 
@@ -163,7 +196,7 @@ public class SingleBurstBenchmark {
     }
 
     @Benchmark
-    public void singleBurst() throws IOException {
+    public void singleBurst(Blackhole bh) throws IOException, InterruptedException {
         final AsyncResult asyncResult = asyncResultFactory.get();
         executorService.submit(asyncResult::onSuccess);
         asyncResult.sync();
