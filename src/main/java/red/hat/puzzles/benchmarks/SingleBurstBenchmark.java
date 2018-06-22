@@ -95,13 +95,11 @@ public class SingleBurstBenchmark {
                             }
                             lock.lock();
                             try {
-                                if (tasks.isEmpty()) {
-                                    try {
-                                        condition.await();
-                                    } catch (InterruptedException e) {
-                                        Thread.currentThread().interrupt();
-                                        //NOOP
-                                    }
+                                try {
+                                    condition.await();
+                                } catch (InterruptedException e) {
+                                    Thread.currentThread().interrupt();
+                                    //NOOP
                                 }
                             } finally {
                                 lock.unlock();
