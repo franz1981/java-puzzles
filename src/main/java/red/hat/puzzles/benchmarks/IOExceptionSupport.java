@@ -16,12 +16,27 @@
  */
 package red.hat.puzzles.benchmarks;
 
+import io.netty.util.internal.PlatformDependent;
+import org.jctools.util.UnsafeAccess;
+
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 /**
  * Used to make throwing IOException instances easier.
  */
 public class IOExceptionSupport {
+
+    public static void main(String[] args){
+        int size = 64;
+        ByteBuffer directBuffer = ByteBuffer.allocateDirect(size+1);
+        ByteBuffer heapBuffer = ByteBuffer.allocate(size+1);
+        PlatformDependent.copyMemory(PlatformDependent.directBufferAddress(directBuffer),heapBuffer.array(),heapBuffer.arrayOffset(), size);
+        if (directBuffer.get(0)!=0){
+            System.out.println("ERROR!");
+        }
+        PlatformDependent.freeDirectBuffer(directBuffer);
+    }
 
     /**
      * Checks the given cause to determine if it's already an IOException type and
