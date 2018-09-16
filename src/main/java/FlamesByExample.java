@@ -15,14 +15,11 @@
  * limitations under the License.
  */
 
-package red.hat.puzzles.profilers;
-
 import java.io.IOException;
 
 public class FlamesByExample {
 
-    private static volatile long consumedCPU;
-    private static final long WORKS = 10;
+    private static final int WORKS = 1000;
 
     public static void main(String[] args) throws IOException {
         /**
@@ -60,69 +57,45 @@ public class FlamesByExample {
 
     private static void a() {
         b();
-        h();
     }
 
     private static void b() {
         c();
+        d();
+        int limit = WORKS;
+        long k = 0;
+        for (int l = 0; l < limit; l++) {
+            k++;
+            if ((k % 2) == 1)
+                k += l;
+        }
+        if (k == 0) {
+            System.err.println(k);
+        }
     }
 
     private static void c() {
-        d();
+        int limit = WORKS;
+        long k = 0;
+        for (int l = 0; l < limit; l++) {
+            k++;
+            if ((k % 2) == 1)
+                k += l;
+        }
     }
 
     private static void d() {
-        e();
-        f();
-        //manually inlined version of BlackHole::consumeCPU
-        long t = consumedCPU;
-        for (long i = WORKS; i > 0L; --i) {
-            t += t * 25214903917L + 11L + i & 281474976710655L;
+        int limit = WORKS;
+        long k = 0;
+        for (int l = 0; l < limit; l++) {
+            k++;
+            if ((k % 2) == 1)
+                k += l;
         }
-        if (t == 42L) {
-            consumedCPU += t;
-        }
-    }
-
-    private static void e() {
-        //manually inlined version of BlackHole::consumeCPU
-        long t = consumedCPU;
-        for (long i = WORKS; i > 0L; --i) {
-            t += t * 25214903917L + 11L + i & 281474976710655L;
-        }
-        if (t == 42L) {
-            consumedCPU += t;
-        }
-    }
-
-    private static void f() {
-        g();
-    }
-
-    private static void g() {
-        //manually inlined version of 2*BlackHole::consumeCPU
-        long t = consumedCPU;
-        long works = WORKS * 2;
-        for (long i = works; i > 0L; --i) {
-            t += t * 25214903917L + 11L + i & 281474976710655L;
-        }
-        if (t == 42L) {
-            consumedCPU += t;
-        }
-    }
-
-    private static void h() {
-        i();
-    }
-
-    private static void i() {
-        //manually inlined version of BlackHole::consumeCPU
-        long t = consumedCPU;
-        for (long i = WORKS; i > 0L; --i) {
-            t += t * 25214903917L + 11L + i & 281474976710655L;
-        }
-        if (t == 42L) {
-            consumedCPU += t;
+        for (int l = 0; l < limit; l++) {
+            k++;
+            if ((k % 2) == 1)
+                k += l;
         }
     }
 }
