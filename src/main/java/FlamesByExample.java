@@ -69,9 +69,6 @@ public class FlamesByExample {
             if ((k % 2) == 1)
                 k += l;
         }
-        if (k == 0) {
-            System.err.println(k);
-        }
     }
 
     private static void c() {
