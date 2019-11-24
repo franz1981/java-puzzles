@@ -14,7 +14,7 @@ import java.util.function.Consumer;
 @OutputTimeUnit(TimeUnit.SECONDS)
 @Warmup(iterations = 5, time = 1)
 @Measurement(iterations = 5, time = 1)
-@Fork(2)
+@Fork(10)
 public class UnrolledLinkedListBench {
 
     private static final Long V = 0L;
@@ -47,22 +47,29 @@ public class UnrolledLinkedListBench {
         for (int i = 0; i < size; i++) {
             list.add(V);
         }
-        consumer = v -> sum+=v;
+        consumer = v -> sum += v;
     }
 
     @Benchmark
-    public long forEach(){
+    public long forEach() {
         sum = 0;
         list.forEach(consumer);
         return sum;
     }
 
     @Benchmark
-    public void replaceInTheMiddle(Blackhole bh){
-        list.remove(index);
-        bh.consume(list);
-        list.add(index, V);
+    public Object replaceInTheMiddle() {
+        return list.set(index, V);
     }
 
+    @Benchmark
+    public Object replaceLast() {
+        return list.set(size - 1, V);
+    }
+
+    @Benchmark
+    public Object replaceFirst() {
+        return list.set(0, V);
+    }
 
 }

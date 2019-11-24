@@ -83,17 +83,16 @@ public class UnrolledLinkedList<E> extends AbstractList<E> implements List<E>, S
 
     /**
      * Constructs an empty list with the specified
-     * {@link UnrolledLinkedList#nodeCapacity nodeCapacity}. For performance
-     * reasons <tt>nodeCapacity</tt> must be greater than or equal to 8.
+     * {@link UnrolledLinkedList#nodeCapacity nodeCapacity}.
      *
      * @param nodeCapacity The maximum number of elements
      *                     that can be stored in a single node.
-     * @throws IllegalArgumentException if <tt>nodeCapacity</tt> is less than 8
+     * @throws IllegalArgumentException if <tt>nodeCapacity</tt> is less or equal to 0
      */
     public UnrolledLinkedList(int nodeCapacity) throws IllegalArgumentException {
 
-        if (nodeCapacity < 8) {
-            throw new IllegalArgumentException("nodeCapacity < 8");
+        if (nodeCapacity <= 0) {
+            throw new IllegalArgumentException("nodeCapacity <= 0");
         }
         this.nodeCapacity = nodeCapacity;
         firstNode = new Node(nodeCapacity);
@@ -862,10 +861,15 @@ public class UnrolledLinkedList<E> extends AbstractList<E> implements List<E>, S
      * @param element the element to be inserted
      */
     private void insertIntoNode(Node node, int ptr, E element) {
-
         // if the node is full
         if (node.numElements == nodeCapacity) {
-            ptr = addNewChunk(node, ptr);
+            final Node newNode = addNewChunk(node);
+            // check whether the element should be inserted into
+            // the original node or into the new node
+            if (ptr > node.numElements) {
+                node = newNode;
+                ptr -= node.numElements;
+            }
         }
         for (int i = node.numElements; i > ptr; i--) {
             node.elements[i] = node.elements[i - 1];
@@ -874,10 +878,9 @@ public class UnrolledLinkedList<E> extends AbstractList<E> implements List<E>, S
         node.numElements++;
         size++;
         modCount++;
-
     }
 
-    private int addNewChunk(Node node, int ptr) {
+    private Node addNewChunk(Node node) {
         Node newNode = new Node(nodeCapacity);
         // move half of the elements to the new node
         int elementsToMove = nodeCapacity / 2;
@@ -900,14 +903,7 @@ public class UnrolledLinkedList<E> extends AbstractList<E> implements List<E>, S
         if (node == lastNode) {
             lastNode = newNode;
         }
-
-        // check whether the element should be inserted into
-        // the original node or into the new node
-        if (ptr > node.numElements) {
-            node = newNode;
-            ptr -= node.numElements;
-        }
-        return ptr;
+        return newNode;
     }
 
     /**
@@ -954,7 +950,9 @@ public class UnrolledLinkedList<E> extends AbstractList<E> implements List<E>, S
         if (next == lastNode) {
             lastNode = node;
         }
-
+        //help GC for GC nepotism
+        next.previous = null;
+        next.next = null;
     }
 
 }
