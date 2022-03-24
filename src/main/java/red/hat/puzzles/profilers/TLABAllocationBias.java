@@ -16,34 +16,38 @@ public class TLABAllocationBias {
     /**
      * Run it with:
      *
-     * red.hat.puzzles.profilers.TLABAllocationBias.* -prof gc --jvmArgs="-XX:+AlwaysPreTouch -Xms2G -Xmx2G -XX:+UseG1GC" -prof "async:output=flamegraph;event=alloc;dir=/tmp;libPath=/home/forked_franz/IdeaProjects/async-profiler/build/libasyncProfiler.so"
+     * red.hat.puzzles.profilers.TLABAllocationBias.* -prof gc --jvmArgs="-XX:+AlwaysPreTouch -Xms2G -Xmx2G -XX:+UseG1GC" --gc true
      */
 
-    private int hopeFullyNotCached;
+    private boolean firedBigAllocation;
 
-    @Setup
+    @Setup(Level.Iteration)
     public void init() {
-        hopeFullyNotCached = 1000;
-        Integer boxedFirst = hopeFullyNotCached;
-        Integer boxedSecond = hopeFullyNotCached;
-        if (boxedFirst == boxedSecond) {
-            throw new IllegalArgumentException("Benchmark not valid! Integer cached values should be < " + hopeFullyNotCached);
+        firedBigAllocation = false;
+    }
+
+    @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public void smallByteArrayAndIntegerWithInitialBigAllocation(final Blackhole bh) {
+        bh.consume(new Integer(1000));
+        bh.consume(new byte[10]);
+        if (!firedBigAllocation) {
+            firedBigAllocation = true;
+            bh.consume(new byte[1024 * 1024 * 1024]);
         }
     }
 
     @Benchmark
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public void smallByteArrayAndInteger(final Blackhole bh) {
-        Integer notCached = hopeFullyNotCached;
-        bh.consume(notCached);
+        bh.consume(new Integer(1000));
         bh.consume(new byte[10]);
     }
 
     @Benchmark
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public void bigByteArrayAndInteger(final Blackhole bh) {
-        Integer notCached = hopeFullyNotCached;
-        bh.consume(notCached);
+        bh.consume(new Integer(1000));
         bh.consume(new byte[1024]);
     }
 }
