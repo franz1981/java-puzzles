@@ -6,12 +6,13 @@ import org.openjdk.jmh.infra.Blackhole;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @Warmup(iterations = 10, time = 1)
-@Measurement(iterations = 10, time = 15)
+@Measurement(iterations = 10, time = 1)
 @Fork(1)
 public class LongTtsp {
 
@@ -49,7 +50,7 @@ public class LongTtsp {
 
     @Benchmark
     @Group("same")
-    public ThreadInfo[] globalSafepointOperation() throws InterruptedException {
+    public ThreadInfo[] globalSafepointOperation() {
         final long start = System.nanoTime();
         final ThreadInfo[] info = ManagementFactory.getThreadMXBean()
                 .dumpAllThreads(false, false);
@@ -74,11 +75,14 @@ public class LongTtsp {
         }
     }
 
-    private static void sleepRemaining(final long startNs, final long durationNs) throws InterruptedException {
-        final long elapsed = System.nanoTime() - startNs;
-        final long untilOneMillis = durationNs - elapsed;
-        if (untilOneMillis > 0) {
-            TimeUnit.NANOSECONDS.sleep(untilOneMillis);
+    private static void sleepRemaining(final long startNs, final long durationNs) {
+        while (true) {
+            final long elapsed = System.nanoTime() - startNs;
+            final long remainingNs = durationNs - elapsed;
+            if (remainingNs <= 0) {
+                return;
+            }
+            LockSupport.parkNanos(remainingNs);
         }
     }
 
