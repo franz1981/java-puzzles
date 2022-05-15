@@ -11,9 +11,42 @@ import java.util.concurrent.TimeUnit;
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Warmup(iterations = 10, time = 1)
-@Measurement(iterations = 15, time = 1)
-@Fork(value = 1, jvmArgs = "-XX:EliminateAllocationArraySizeLimit=10002")
+@Measurement(iterations = 5, time = 1)
+@Fork(value = 2)
 public class RandomShuffleBenchmark {
+
+    @State(Scope.Thread)
+    public static class RandomState {
+        private final short[] choices = new short[MAX_VALUE + 1];
+
+        {
+            for (short i = 0; i < choices.length; i++) {
+                choices[i] = i;
+            }
+        }
+
+        private short max = MAX_VALUE;
+
+        public short[] rollback() {
+            final short[] choices = this.choices;
+            if (max == -1) {
+                // let's find a cutoff value that can be used to decide when use this form :)
+                for (short i = 0; i < choices.length; i++) {
+                    choices[i] = i;
+                }
+                max = MAX_VALUE;
+                return choices;
+            }
+            for (short i = (short) (max + 1); i <= MAX_VALUE; i++) {
+                final short value = choices[i];
+                choices[value] = value;
+                choices[i] = i;
+            }
+            max = MAX_VALUE;
+            return choices;
+        }
+
+    }
 
     @Param({"5", "10", "15", "20"})
     private int count;
@@ -29,28 +62,21 @@ public class RandomShuffleBenchmark {
 
     @Benchmark
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    public Integer[] fisherYatesBoxed() {
+    public Integer[] pooledFisherYatesBoxed(RandomState state) {
         final ThreadLocalRandom random = ThreadLocalRandom.current();
-        final short[] choices = new short[MAX_VALUE + 1];
-        // do not initialize it and just use 0 as our NULL element instead
+        final short[] choices = state.rollback();
         final int count = this.count;
-        short max = MAX_VALUE;
+        short max = state.max;
         final Integer[] uniqueRandom = new Integer[count];
         for (short i = 0; i < count; i++) {
             final short nextToShuffle = (short) random.nextInt(0, max + 1);
             final short nextUnique = choices[nextToShuffle];
-            final short realUnique;
-            // this can be made branchless too!
-            if (nextUnique == 0) {
-                realUnique = nextToShuffle;
-            } else {
-                realUnique = (short) (nextUnique - 1);
-            }
-            // adding 1 to save 0 to ever appear: it's our NULL value
-            choices[nextToShuffle] = (short) (max + 1);
-            uniqueRandom[i] = BOXED[realUnique];
+            choices[nextToShuffle] = max;
+            choices[max] = nextUnique;
+            uniqueRandom[i] = BOXED[nextToShuffle];
             max--;
         }
+        state.max = max;
         return uniqueRandom;
     }
 
@@ -65,25 +91,5 @@ public class RandomShuffleBenchmark {
         }
         return ids;
     }
-
-    /**
-     * Run the benchmark with -prof gc and it should report no allocations :(
-     * EliminateAllocationArraySizeLimit should control, if the short[] won't escape,
-     * that it won't be allocated, but...it doesn't seem the case: INVESTIGATE!
-     */
-    @Benchmark
-    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    public long allocationCheck() {
-        final short[] choices = new short[MAX_VALUE + 1];
-        for (short i = 0; i < choices.length; i++) {
-            choices[i] = i;
-        }
-        long sum = 0;
-        for (short s : choices) {
-            sum += s;
-        }
-        return sum;
-    }
-
 
 }
