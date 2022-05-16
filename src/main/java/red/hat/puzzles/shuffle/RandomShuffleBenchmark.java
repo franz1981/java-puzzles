@@ -20,12 +20,12 @@ public class RandomShuffleBenchmark {
     @State(Scope.Thread)
     public static class RandomState {
         private final short CHOICES_LENGTH = MAX_VALUE + 1;
-        private final short[] choices = new short[Short.MAX_VALUE];
+        private final short[] choices = new short[CHOICES_LENGTH];
 
         private short[] pooledUniques;
 
         {
-            for (short i = 0; i < CHOICES_LENGTH + 1; i++) {
+            for (short i = 0; i < CHOICES_LENGTH; i++) {
                 choices[i] = i;
             }
         }
@@ -72,7 +72,6 @@ public class RandomShuffleBenchmark {
     }
 
     @Benchmark
-    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public Integer[] threadLocalPooledFisherYatesBoxed() {
         final ThreadLocalRandom random = ThreadLocalRandom.current();
         final RandomState state = TL_STATE.get();
@@ -89,6 +88,9 @@ public class RandomShuffleBenchmark {
     }
 
     private static short[] fisherYates(ThreadLocalRandom random, RandomState state, short count) {
+        if (count > state.CHOICES_LENGTH) {
+            throw new IllegalArgumentException("cannot choose more values then ones on the existing range");
+        }
         final short[] choices = state.choices;
         final short max = MAX_VALUE;
         final short[] uniqueRandom = state.allocateRequired(count);
@@ -107,7 +109,6 @@ public class RandomShuffleBenchmark {
     }
 
     @Benchmark
-    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public Integer[] fisherYatesBoxed(RandomState state) {
         final ThreadLocalRandom random = ThreadLocalRandom.current();
         final short count = this.count;
@@ -115,13 +116,11 @@ public class RandomShuffleBenchmark {
     }
 
     @Benchmark
-    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public short[] fisherYates(RandomState state) {
         return fisherYates(ThreadLocalRandom.current(), state, count);
     }
 
     @Benchmark
-    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public Set<Integer> uniqueRandomUsingSet() {
         Set<Integer> ids = new HashSet<>(count);
         int counter = 0;
