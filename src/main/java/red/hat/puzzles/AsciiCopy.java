@@ -2,7 +2,6 @@ package red.hat.puzzles;
 
 import org.openjdk.jmh.annotations.*;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
@@ -15,10 +14,10 @@ public class AsciiCopy {
     private byte[] asciiContent;
     private char[] asciiContentChars;
 
-    @Param({"0", "1", "2", "3"})
+    @Param({"0", "1"})
     private int start;
 
-    @Param({"4", "16", "32", "128"})
+    @Param({"8", "16"})
     private int end;
 
     @Setup
@@ -32,22 +31,69 @@ public class AsciiCopy {
     }
 
     @Benchmark
-    public String stringFromChars() {
-        return new String(asciiContentChars, start, end - start);
-    }
-
-    @Benchmark
-    public String stringFromBytes() {
-        return new String(asciiContent, 0, start, end - start);
-    }
-
-    @Benchmark
-    public String stringFromBytesLessBoundCheck() {
+    public byte[] bytesCopy() {
         final byte[] asciiContent = this.asciiContent;
-        if (start == 0 && end == asciiContent.length) {
-            return new String(asciiContent, 0, 0, asciiContent.length);
+        final int start = this.start;
+        final int end = this.end;
+        final int newLen = end - start;
+        final byte[] copy = new byte[newLen];
+        System.arraycopy(asciiContent, start, copy, 0, copy.length);
+        return copy;
+    }
+
+    @Benchmark
+    public byte[] bytesOptimizedCopyOfRange() {
+        final byte[] asciiContent = this.asciiContent;
+        final int start = this.start;
+        final int end = this.end;
+        if (start == 0) {
+            if (end == asciiContent.length) {
+                return Arrays.copyOfRange(asciiContent, 0, asciiContent.length);
+            }
+            return Arrays.copyOfRange(asciiContent, 0, end);
         }
-        return new String(asciiContent, 0, start, end - start);
+        return Arrays.copyOfRange(asciiContent, start, end);
+    }
+
+    @Benchmark
+    public byte[] bytesCopyOfRange() {
+        final byte[] asciiContent = this.asciiContent;
+        final int start = this.start;
+        final int end = this.end;
+        return Arrays.copyOfRange(asciiContent, start, end);
+    }
+
+    @Benchmark
+    public String asciiStringBytesCopy() {
+        final byte[] asciiContent = this.asciiContent;
+        final int start = this.start;
+        final int end = this.end;
+        final int newLen = end - start;
+        return new String(asciiContent, 0, start, newLen);
+    }
+
+    @Benchmark
+    public String asciiStringOptimizedBytesCopy() {
+        final byte[] asciiContent = this.asciiContent;
+        final int start = this.start;
+        final int end = this.end;
+        if (start == 0) {
+            if (end == asciiContent.length) {
+                return new String(asciiContent, 0, 0, asciiContent.length);
+            }
+            return new String(asciiContent, 0, 0, end);
+        }
+        final int newLen = end - start;
+        return new String(asciiContent, 0, start, newLen);
+    }
+
+    @Benchmark
+    public String asciiStringCharCopy() {
+        final char[] asciiContent = this.asciiContentChars;
+        final int start = this.start;
+        final int end = this.end;
+        final int newLen = end - start;
+        return new String(asciiContent, start, newLen);
     }
 
 
