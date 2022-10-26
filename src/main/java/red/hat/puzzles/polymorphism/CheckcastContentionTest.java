@@ -1,7 +1,6 @@
 package red.hat.puzzles.polymorphism;
 
 import org.openjdk.jmh.annotations.*;
-import org.openjdk.jmh.infra.Blackhole;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,65 +8,96 @@ import java.util.concurrent.TimeUnit;
 
 @State(Scope.Thread)
 @Measurement(iterations = 5, time = 200, timeUnit = TimeUnit.MILLISECONDS)
-@Warmup(iterations = 5, time = 200, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 15, time = 200, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(2)
 public class CheckcastContentionTest {
-    interface I1 {
+
+    /**
+     * Vert-x internal API isn't supposed to be exposed outside the framework, and can
+     * implements additional internal "unsafe" methods.
+     */
+    public interface VertxHttpMessage extends HttpMessage {
+        long unsafeSize();
     }
 
-    interface I2 {
+    public interface HttpMessage {
+        long safeSize();
     }
 
-    class A implements I1, I2{
+    public static class HttpStatefullMessage implements VertxHttpMessage {
 
+        private long randomField = 1;
+
+        @Override
+        public long unsafeSize() {
+            return randomField;
+        }
+
+        @Override
+        public long safeSize() {
+            return randomField;
+        }
     }
 
-    class B implements I1, I2{
+    public static class HttpStatelessMessage implements VertxHttpMessage {
 
+        private long randomField = 2;
+
+        @Override
+        public long unsafeSize() {
+            return randomField;
+        }
+
+        @Override
+        public long safeSize() {
+            return randomField;
+        }
     }
 
-    @Param({"0", "1000", "10000"})
-    public int typePoisoning;
+    private List<VertxHttpMessage> vertxHttpMessage;
+    private List<HttpMessage> httpMessage;
 
-    private List<I1> i1;
-    private List<I2> i2;
-
+    @Param({"false", "true"})
+    private boolean typePollution;
 
     @Setup
-    public void init(Blackhole bh) {
-        i1 = new ArrayList<>(1);
-        i2 = new ArrayList<>(1);
-        if (typePoisoning > 0) {
-            i1.add(new B());
-            i2.add(new B());
+    public void init() {
+        vertxHttpMessage = new ArrayList<>(2);
+        httpMessage = new ArrayList<>(2);
+        vertxHttpMessage.add(new HttpStatelessMessage());
+        if (typePollution) {
+            vertxHttpMessage.add(new HttpStatefullMessage());
+        } else {
+            vertxHttpMessage.add(new HttpStatelessMessage());
         }
-        for (int i = 0; i < typePoisoning; i++) {
-            iterateI1(bh);
-            iterateI2(bh);
-        }
-        // right now it could be biased just toward B!
-        i1.clear();
-        i2.clear();
-        i1.add(new A());
-        i2.add(new A());
-    }
-
-    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    @Benchmark
-    @Group("normal")
-    public void iterateI1(Blackhole bh) {
-        for (I1 i : i1) {
-           bh.consume(i);
+        httpMessage.add(new HttpStatelessMessage());
+        if (typePollution) {
+            httpMessage.add(new HttpStatefullMessage());
+        } else {
+            httpMessage.add(new HttpStatelessMessage());
         }
     }
 
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     @Benchmark
     @Group("normal")
-    public void iterateI2(Blackhole bh) {
-        for (I2 i : i2) {
-            bh.consume(i);
+    public long unsafeTotalSize() {
+        long size = 0;
+        for (VertxHttpMessage i : vertxHttpMessage) {
+            size += i.unsafeSize();
         }
+        return size;
+    }
+
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    @Benchmark
+    @Group("normal")
+    public long safeTotalSize() {
+        long size = 0;
+        for (HttpMessage i : httpMessage) {
+            size += i.safeSize();
+        }
+        return size;
     }
 
 }
