@@ -16,7 +16,7 @@ public class CheckcastContentionTest {
      * Vert-x internal API isn't supposed to be exposed outside the framework, and can
      * implements additional internal "unsafe" methods.
      */
-    public interface VertxHttpMessage extends HttpMessage {
+    public interface InternalHttpMessage extends HttpMessage {
         long unsafeSize();
     }
 
@@ -24,7 +24,7 @@ public class CheckcastContentionTest {
         long safeSize();
     }
 
-    public static class HttpStatefullMessage implements VertxHttpMessage {
+    public static class HttpStatefullMessage implements InternalHttpMessage {
 
         private long randomField = 1;
 
@@ -39,7 +39,7 @@ public class CheckcastContentionTest {
         }
     }
 
-    public static class HttpStatelessMessage implements VertxHttpMessage {
+    public static class HttpStatelessMessage implements InternalHttpMessage {
 
         private long randomField = 2;
 
@@ -54,27 +54,27 @@ public class CheckcastContentionTest {
         }
     }
 
-    private List<VertxHttpMessage> vertxHttpMessage;
-    private List<HttpMessage> httpMessage;
+    private List<InternalHttpMessage> internalHttpMessages;
+    private List<HttpMessage> httpMessages;
 
     @Param({"false", "true"})
     private boolean typePollution;
 
     @Setup
     public void init() {
-        vertxHttpMessage = new ArrayList<>(2);
-        httpMessage = new ArrayList<>(2);
-        vertxHttpMessage.add(new HttpStatelessMessage());
+        internalHttpMessages = new ArrayList<>(2);
+        internalHttpMessages.add(new HttpStatelessMessage());
         if (typePollution) {
-            vertxHttpMessage.add(new HttpStatefullMessage());
+            internalHttpMessages.add(new HttpStatefullMessage());
         } else {
-            vertxHttpMessage.add(new HttpStatelessMessage());
+            internalHttpMessages.add(new HttpStatelessMessage());
         }
-        httpMessage.add(new HttpStatelessMessage());
+        httpMessages = new ArrayList<>(2);
+        httpMessages.add(new HttpStatelessMessage());
         if (typePollution) {
-            httpMessage.add(new HttpStatefullMessage());
+            httpMessages.add(new HttpStatefullMessage());
         } else {
-            httpMessage.add(new HttpStatelessMessage());
+            httpMessages.add(new HttpStatelessMessage());
         }
     }
 
@@ -83,7 +83,7 @@ public class CheckcastContentionTest {
     @Group("normal")
     public long unsafeTotalSize() {
         long size = 0;
-        for (VertxHttpMessage i : vertxHttpMessage) {
+        for (InternalHttpMessage i : internalHttpMessages) {
             size += i.unsafeSize();
         }
         return size;
@@ -94,7 +94,7 @@ public class CheckcastContentionTest {
     @Group("normal")
     public long safeTotalSize() {
         long size = 0;
-        for (HttpMessage i : httpMessage) {
+        for (HttpMessage i : httpMessages) {
             size += i.safeSize();
         }
         return size;
