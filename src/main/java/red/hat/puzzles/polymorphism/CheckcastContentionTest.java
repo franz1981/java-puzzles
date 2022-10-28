@@ -57,9 +57,6 @@ public class CheckcastContentionTest {
     private List<VertxHttpMessage> vertxHttpMessage;
     private List<HttpMessage> httpMessage;
 
-    @Param({"false", "true"})
-    private boolean typePollution;
-
     @Setup
     public void init() {
         vertxHttpMessage = new ArrayList<>(2);
