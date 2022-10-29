@@ -12,10 +12,6 @@ import java.util.concurrent.TimeUnit;
 @Fork(2)
 public class CheckcastContentionTest {
 
-    /**
-     * Vert-x internal API isn't supposed to be exposed outside the framework, and can
-     * implements additional internal "unsafe" methods.
-     */
     public interface InternalHttpMessage extends HttpMessage {
         long unsafeSize();
     }
