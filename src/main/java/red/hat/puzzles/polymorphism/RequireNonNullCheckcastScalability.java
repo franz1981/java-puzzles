@@ -12,36 +12,33 @@ import java.util.concurrent.TimeUnit;
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Fork(2)
 public class RequireNonNullCheckcastScalability {
-    public interface InternalHttpMessage extends HttpMessage {
+    public interface InternalContext extends Context {
         // Internal Framework API
-        long unsafeSize();
+        boolean isDuplicated();
     }
 
-    public interface HttpMessage {
+    public interface Context {
         // some public API
     }
 
-    public static class HttpStatefullMessage implements InternalHttpMessage {
+    public static class DuplicatedContext implements InternalContext {
 
-        private long dummyField = 1;
 
         @Override
-        public long unsafeSize() {
-            return dummyField;
+        public boolean isDuplicated() {
+            return true;
         }
     }
 
-    public static class HttpStatelessMessage implements InternalHttpMessage {
-
-        private long dummyField = 2;
+    public static class NonDuplicatedContext implements InternalContext {
 
         @Override
-        public long unsafeSize() {
-            return dummyField;
+        public boolean isDuplicated() {
+            return false;
         }
     }
 
-    private HttpMessage msg;
+    private Context msg;
 
     @Param({"false", "true"})
     public boolean typePollution;
@@ -49,56 +46,57 @@ public class RequireNonNullCheckcastScalability {
     @Setup
     public void init(Blackhole bh) {
         if (typePollution) {
-            msg = new HttpStatelessMessage();
+            msg = new NonDuplicatedContext();
             for (int i = 0; i < 11000; i++) {
-                bh.consume(unsafeTotalSize());
+                bh.consume(isDuplicated(msg));
             }
             // deopt on warmup
         }
-        msg = new HttpStatefullMessage();
+        msg = new DuplicatedContext();
     }
 
     // How to fix it?
     // Replace it with:
     //
-    // return Objects.requireNonNull((InternalHttpMessage) message).unsafeSize();
-    private static long unsafeSize(HttpMessage message) {
-        HttpMessage actual = Objects.requireNonNull(message);
-        return ((InternalHttpMessage) actual).unsafeSize();
+    // return Objects.requireNonNull((InternalContext) message).isDuplicated();
+    private static boolean isDuplicated(Context message) {
+        Context actual = Objects.requireNonNull(message);
+        return ((InternalContext) actual).isDuplicated();
     }
 
     @Benchmark
-    public long unsafeTotalSize() {
-        return unsafeSize(msg);
+    @Threads(1)
+    public boolean isDuplicated1() {
+        return isDuplicated(msg);
     }
 
     @Benchmark
     @Threads(2)
-    public long unsafeTotalSize2() {
-        return unsafeSize(msg);
+    public boolean isDuplicated2() {
+        return isDuplicated(msg);
     }
 
     @Benchmark
     @Threads(3)
-    public long unsafeTotalSize3() {
-        return unsafeSize(msg);
+    public boolean isDuplicated3() {
+        return isDuplicated(msg);
     }
 
     @Benchmark
     @Threads(4)
-    public long unsafeTotalSize4() {
-        return unsafeSize(msg);
+    public boolean isDuplicated4() {
+        return isDuplicated(msg);
     }
 
     @Benchmark
     @Threads(5)
-    public long unsafeTotalSize5() {
-        return unsafeSize(msg);
+    public boolean isDuplicated5() {
+        return isDuplicated(msg);
     }
 
     @Benchmark
     @Threads(6)
-    public long unsafeTotalSize6() {
-        return unsafeSize(msg);
+    public boolean isDuplicated6() {
+        return isDuplicated(msg);
     }
 }
