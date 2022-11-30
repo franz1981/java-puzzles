@@ -2,8 +2,6 @@ package red.hat.puzzles.polymorphism;
 
 import org.openjdk.jmh.annotations.*;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.ToLongFunction;
 
@@ -76,24 +74,7 @@ public class LambdaCheckcastContentionTest {
     }
 
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    @Benchmark
-    @Group("normal")
-    public long unsafeTotalSize() {
-        return unsafeForEach(internalHttpMessages, InternalHttpMessage::unsafeSize)
-                + unsafeForEach(internalHttpMessages, msg -> msg.unsafeSize());
-    }
-
-    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    @Benchmark
-    @Group("normal")
-    public long safeTotalSize() {
-        return safeForEach(httpMessages, HttpMessage::safeSize) +
-                safeForEach(httpMessages, msg -> msg.safeSize());
-
-    }
-
-    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    private static <T> long unsafeForEach(InternalHttpMessage[] msgs, ToLongFunction<InternalHttpMessage> f) {
+    private static <T> long genericUnsafeForEach(InternalHttpMessage[] msgs, ToLongFunction<InternalHttpMessage> f) {
         long v = 0;
         for (InternalHttpMessage msg : msgs) {
             v += f.applyAsLong(msg);
@@ -102,12 +83,74 @@ public class LambdaCheckcastContentionTest {
     }
 
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    private static <T> long safeForEach(HttpMessage[] msgs, ToLongFunction<HttpMessage> f) {
+    private static <T> long genericSafeForEach(HttpMessage[] msgs, ToLongFunction<HttpMessage> f) {
         long v = 0;
         for (HttpMessage msg : msgs) {
             v += f.applyAsLong(msg);
         }
         return v;
+    }
+
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    @Benchmark
+    @Group("generic")
+    public long genericUnsafeTotalSize() {
+        return genericUnsafeForEach(internalHttpMessages, InternalHttpMessage::unsafeSize)
+                + genericUnsafeForEach(internalHttpMessages, msg -> msg.unsafeSize());
+    }
+
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    @Benchmark
+    @Group("generic")
+    public long genericSafeTotalSize() {
+        return genericSafeForEach(httpMessages, HttpMessage::safeSize) +
+                genericSafeForEach(httpMessages, msg -> msg.safeSize());
+
+    }
+
+    @FunctionalInterface
+    private interface InternalHttpMessageToLong {
+        long applyAsLong(InternalHttpMessage msg);
+    }
+
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    private static <T> long reifiedUnsafeForEach(InternalHttpMessage[] msgs, InternalHttpMessageToLong f) {
+        long v = 0;
+        for (InternalHttpMessage msg : msgs) {
+            v += f.applyAsLong(msg);
+        }
+        return v;
+    }
+
+    @FunctionalInterface
+    private interface HttpMessageToLong {
+        long applyAsLong(HttpMessage msg);
+    }
+
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    private static <T> long reifiedSafeForEach(HttpMessage[] msgs, HttpMessageToLong f) {
+        long v = 0;
+        for (HttpMessage msg : msgs) {
+            v += f.applyAsLong(msg);
+        }
+        return v;
+    }
+
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    @Benchmark
+    @Group("reified")
+    public long reifiedUnsafeTotalSize() {
+        return reifiedUnsafeForEach(internalHttpMessages, InternalHttpMessage::unsafeSize)
+                + reifiedUnsafeForEach(internalHttpMessages, msg -> msg.unsafeSize());
+    }
+
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    @Benchmark
+    @Group("reified")
+    public long reifiedSafeTotalSize() {
+        return reifiedSafeForEach(httpMessages, HttpMessage::safeSize) +
+                reifiedSafeForEach(httpMessages, msg -> msg.safeSize());
+
     }
 
 }
