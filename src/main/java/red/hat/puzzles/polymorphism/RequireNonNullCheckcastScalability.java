@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 @Warmup(iterations = 10, time = 200, timeUnit = TimeUnit.MILLISECONDS)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Fork(2)
+// try running this with -XX:TypeProfileLevel=222 too: isDuplicated1() would be profiled to be DuplicatedContext and override the polluted profile at the checkcasts.
 public class RequireNonNullCheckcastScalability {
     public interface InternalContext extends Context {
         // Internal Framework API
