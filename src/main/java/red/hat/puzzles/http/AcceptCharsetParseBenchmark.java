@@ -95,55 +95,48 @@ public class AcceptCharsetParseBenchmark {
         mimeTypeNoCharsetNoSemicolon = "application/xml";
     }
 
+    private static int indexOfSemicolonOrWhitespace(String s, int start) {
+        for (int i = start; i < s.length(); i++) {
+            final char c = s.charAt(i);
+            if (c == ';' || Character.isWhitespace(c)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     private static String parseCharset(String mimeType) {
         if (mimeType == null) {
             return null;
         }
-        // super fast-path: https://datatracker.ietf.org/doc/html/rfc7231#section-3.1.1.1
-        // "Note: Unlike some similar constructs in other header fields, media
-        //      type parameters do not allow whitespace (even "bad" whitespace)
-        //      around the "=" character.
-        int charsetIndex = mimeType.indexOf("charset=");
+        final int charsetIndex = mimeType.indexOf("charset=");
         if (charsetIndex == -1) {
             return null;
         }
-        return parseCharsetSlowPath(mimeType, charsetIndex);
+        final int charsetValueStart = charsetIndex + 8;
+        final int firstSemicolonWhitespace = indexOfSemicolonOrWhitespace(mimeType, charsetValueStart);
+        final int charsetValueEnd = firstSemicolonWhitespace == -1 ? mimeType.length() : firstSemicolonWhitespace;
+        final int charsetLen = charsetValueEnd - charsetValueStart;
+        if (charsetLen == 0) {
+            return null;
+        }
+        return charsetOf(mimeType, charsetValueStart, charsetValueEnd, charsetLen);
     }
 
-    private static String parseCharsetSlowPath(String mimeType, int charsetIndex) {
-        assert charsetIndex != -1;
-        int start = 0;
-        for (; ; ) {
-            final int nextCharset = charsetIndex + 8;
-            // if it's any of those
-            if (charsetIndex >= start) {
-                final int charsetValueStart = nextCharset;
-                int charsetValueEnd = mimeType.length();
-                for (int i = charsetValueStart; i < mimeType.length(); i++) {
-                    final char c = mimeType.charAt(i);
-                    if (c == ';' || Character.isWhitespace(c)) {
-                        charsetValueEnd = i;
-                        break;
-                    }
+    private static String charsetOf(String mimeType, int charsetValueStart, int charsetValueEnd, int charsetLen) {
+        switch (charsetLen) {
+            case 5:
+                if (mimeType.regionMatches(charsetValueStart, "utf-8", 0, 5)) {
+                    return "utf-8";
                 }
-                final int charsetLen = charsetValueEnd - charsetValueStart;
-                if (charsetLen == 0) {
-                    return null;
+                break;
+            case 8:
+                if (mimeType.regionMatches(charsetValueStart, "us-ascii", 0, 8)) {
+                    return "us-ascii";
                 }
-                return mimeType.substring(charsetValueStart, charsetValueEnd);
-            }
-            start = nextCharset;
-            final int remaining = mimeType.length() - start;
-            if (remaining < 9) {
-                // With less than "charset=<any char>".length() === 9 chars
-                // there's no point to keep on searching
-                return null;
-            }
-            charsetIndex = mimeType.indexOf("charset=", start);
-            if (charsetIndex == -1) {
-                return null;
-            }
+                break;
         }
+        return mimeType.substring(charsetValueStart, charsetValueEnd);
     }
 
     private static String getCharset(String mimeType) {
