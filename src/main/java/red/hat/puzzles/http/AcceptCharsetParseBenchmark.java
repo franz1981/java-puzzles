@@ -4,6 +4,7 @@ import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 
 import java.nio.charset.StandardCharsets;
+import java.util.StringTokenizer;
 
 @State(Scope.Benchmark)
 @Fork(2)
@@ -102,7 +103,7 @@ public class AcceptCharsetParseBenchmark {
         // "Note: Unlike some similar constructs in other header fields, media
         //      type parameters do not allow whitespace (even "bad" whitespace)
         //      around the "=" character.
-        int charsetIndex = mimeType.indexOf("harset=");
+        int charsetIndex = mimeType.indexOf("charset=");
         if (charsetIndex == -1) {
             return null;
         }
@@ -113,32 +114,32 @@ public class AcceptCharsetParseBenchmark {
         assert charsetIndex != -1;
         int start = 0;
         for (; ; ) {
-            // both "Charset" and "charset" are fine: let's check
+            final int nextCharset = charsetIndex + 8;
             // if it's any of those
-            if (charsetIndex > start) {
-                final int charsetStart = charsetIndex - 1;
-                if (mimeType.charAt(charsetStart) == 'c' || mimeType.charAt(charsetStart) == 'C') {
-                    // check till next ; or the end of mimeType: "charset=".length() === 8
-                    final int charsetValueStart = charsetStart + 8;
-                    final int nextSemiColon = mimeType.indexOf(';', charsetValueStart);
-                    final int charsetValueEnd = nextSemiColon == -1 ? mimeType.length() : nextSemiColon;
-                    final int charsetLen = charsetValueEnd - charsetValueStart;
-                    if (charsetLen == 0) {
-                        return null;
+            if (charsetIndex >= start) {
+                final int charsetValueStart = nextCharset;
+                int charsetValueEnd = mimeType.length();
+                for (int i = charsetValueStart; i < mimeType.length(); i++) {
+                    final char c = mimeType.charAt(i);
+                    if (c == ';' || Character.isWhitespace(c)) {
+                        charsetValueEnd = i;
+                        break;
                     }
-                    // TODO: here we can decide to quickly parse known ones eg utf-8, us-ascii, etc etc
-                    return mimeType.substring(charsetValueStart, charsetValueEnd);
                 }
+                final int charsetLen = charsetValueEnd - charsetValueStart;
+                if (charsetLen == 0) {
+                    return null;
+                }
+                return mimeType.substring(charsetValueStart, charsetValueEnd);
             }
-            // skip "harset=".length() === 7 chars
-            start = charsetIndex + 7;
+            start = nextCharset;
             final int remaining = mimeType.length() - start;
             if (remaining < 9) {
                 // With less than "charset=<any char>".length() === 9 chars
                 // there's no point to keep on searching
                 return null;
             }
-            charsetIndex = mimeType.indexOf("harset=", start);
+            charsetIndex = mimeType.indexOf("charset=", start);
             if (charsetIndex == -1) {
                 return null;
             }
@@ -168,6 +169,13 @@ public class AcceptCharsetParseBenchmark {
     }
 
     @Benchmark
+    public void parseCharsetsTokenizer(Blackhole bh) {
+        for (String mimeType : mimeTypes) {
+            bh.consume(getCharsetTokenizer(mimeType));
+        }
+    }
+
+    @Benchmark
     public String parseCharsetsNoSplitNoCharsetNoSemicolon() {
         return getCharset(mimeTypeNoCharsetNoSemicolon);
     }
@@ -177,12 +185,30 @@ public class AcceptCharsetParseBenchmark {
         return getCharsetSplit(mimeTypeNoCharsetNoSemicolon);
     }
 
+    @Benchmark
+    public String parseCharsetsTokenizerNoCharsetNoSemicolon() {
+        return getCharsetTokenizer(mimeTypeNoCharsetNoSemicolon);
+    }
+
     private static String getCharsetSplit(String mimeType) {
         if (mimeType != null && mimeType.contains(";")) {
             String[] parts = mimeType.split(";");
             for (String part : parts) {
                 if (part.trim().startsWith("charset")) {
                     return part.split("=")[1];
+                }
+            }
+        }
+        return StandardCharsets.UTF_8.name();
+    }
+
+    private static String getCharsetTokenizer(String mimeType) {
+        if (mimeType != null) {
+            var charsets = new StringTokenizer(mimeType, ";", false);
+            while (charsets.hasMoreTokens()) {
+                final String charset = charsets.nextToken().trim();
+                if (charset.startsWith("charset=")) {
+                    return charset.substring(8);
                 }
             }
         }
