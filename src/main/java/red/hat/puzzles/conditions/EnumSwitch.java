@@ -17,8 +17,8 @@ public class EnumSwitch {
         PARANOID
     }
 
-    public static Level UNSTABLE_LEVEL = Level.DISABLED;
-    public static final Level STABLE_LEVEL = Level.DISABLED;
+    public static Level UNSTABLE_LEVEL = Level.valueOf(System.getProperty("level", Level.DISABLED.name()));
+    public static final Level STABLE_LEVEL = Level.valueOf(System.getProperty("level", Level.DISABLED.name()));
 
     private ByteBuffer buffer;
 
