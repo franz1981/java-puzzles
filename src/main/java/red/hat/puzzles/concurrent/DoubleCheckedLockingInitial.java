@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Supplier;
 
 @State(Scope.Thread)
 @Fork(2)
@@ -15,13 +16,15 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @BenchmarkMode(Mode.AverageTime)
 public class DoubleCheckedLockingInitial {
-    private static class SynchronizedLazySetSingleton {
+
+    private static class SynchronizedLazySetSingleton implements Supplier<ConcurrentMap<Object, Object>> {
         private static final AtomicReferenceFieldUpdater<SynchronizedLazySetSingleton, ConcurrentMap> MAP_UPDATER =
                 AtomicReferenceFieldUpdater.newUpdater(SynchronizedLazySetSingleton.class, ConcurrentMap.class, "map");
 
         private volatile ConcurrentMap<Object, Object> map;
 
-        public ConcurrentMap<Object, Object> map() {
+        @Override
+        public ConcurrentMap<Object, Object> get() {
             var map = this.map;
             if (map != null) {
                 return map;
@@ -38,14 +41,15 @@ public class DoubleCheckedLockingInitial {
         }
     }
 
-    private static class CompareAndSetSingleton {
+    private static class CompareAndSetSingleton implements Supplier<ConcurrentMap<Object, Object>> {
 
         private static final AtomicReferenceFieldUpdater<CompareAndSetSingleton, ConcurrentMap> MAP_UPDATER =
                 AtomicReferenceFieldUpdater.newUpdater(CompareAndSetSingleton.class, ConcurrentMap.class, "map");
 
         private volatile ConcurrentMap<Object, Object> map;
 
-        public ConcurrentMap<Object, Object> map() {
+        @Override
+        public ConcurrentMap<Object, Object> get() {
             var map = this.map;
             if (map != null) {
                 return map;
@@ -58,10 +62,11 @@ public class DoubleCheckedLockingInitial {
         }
     }
 
-    private static class SynchronizedVolatileSetSingleton {
+    private static class SynchronizedVolatileSetSingleton implements Supplier<ConcurrentMap<Object, Object>> {
         private volatile ConcurrentMap<Object, Object> map;
 
-        public ConcurrentMap<Object, Object> map() {
+        @Override
+        public ConcurrentMap<Object, Object> get() {
             var map = this.map;
             if (map != null) {
                 return map;
@@ -78,14 +83,42 @@ public class DoubleCheckedLockingInitial {
         }
     }
 
-    @Param({"0", "100"})
+    @Param({"0", "20"})
     public int work;
 
+    @Param({"synchronizedVolatileSet", "synchronizedLazySet", "compareAndSet"})
+    public String type;
+
+    private Supplier<Supplier<ConcurrentMap<Object, Object>>> singletonFactory;
+
+    private static final Object KEY = new Object();
+
+    @Setup
+    public void init() {
+        switch (type) {
+            case "synchronizedVolatileSet":
+                singletonFactory = SynchronizedVolatileSetSingleton::new;
+                break;
+            case "synchronizedLazySet":
+                singletonFactory = SynchronizedLazySetSingleton::new;
+                break;
+            case "compareAndSet":
+                singletonFactory = CompareAndSetSingleton::new;
+                break;
+            default:
+                throw new UnsupportedOperationException("not supported type = " + type);
+        }
+    }
+
+    private static Object createValue() {
+        return new ConcurrentHashMap<>();
+    }
+
     @Benchmark
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    public Object synchronizedVolatileSet(Blackhole bh) {
-        var singleton = new SynchronizedVolatileSetSingleton();
-        var map = singleton.map();
+    public Object get(Blackhole bh) {
+        var singleton = singletonFactory.get();
+        var map = singleton.get();
         bh.consume(singleton);
         if (work > 0) {
             Blackhole.consumeCPU(work);
@@ -95,22 +128,11 @@ public class DoubleCheckedLockingInitial {
 
     @Benchmark
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    public Object synchronizedLazySet(Blackhole bh) {
-        var singleton = new SynchronizedLazySetSingleton();
-        var map = singleton.map();
+    public Object getAndPut(Blackhole bh) {
+        var singleton = singletonFactory.get();
+        var map = singleton.get();
         bh.consume(singleton);
-        if (work > 0) {
-            Blackhole.consumeCPU(work);
-        }
-        return map;
-    }
-
-    @Benchmark
-    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    public Object compareAndSetSingleton(Blackhole bh) {
-        var singleton = new CompareAndSetSingleton();
-        var map = singleton.map();
-        bh.consume(singleton);
+        map.put(KEY, createValue());
         if (work > 0) {
             Blackhole.consumeCPU(work);
         }
