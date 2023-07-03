@@ -17,6 +17,20 @@ import java.util.function.Supplier;
 @BenchmarkMode(Mode.AverageTime)
 public class DoubleCheckedLockingInitial {
 
+    private static class SynchronizedSingleton implements Supplier<ConcurrentMap<Object, Object>> {
+        private ConcurrentMap<Object, Object> map;
+
+        @Override
+        public synchronized ConcurrentMap<Object, Object> get() {
+            var map = this.map;
+            if (map != null) {
+                return map;
+            }
+            map = new ConcurrentHashMap<>();
+            return map;
+        }
+    }
+
     private static class SynchronizedLazySetSingleton implements Supplier<ConcurrentMap<Object, Object>> {
         private static final AtomicReferenceFieldUpdater<SynchronizedLazySetSingleton, ConcurrentMap> MAP_UPDATER =
                 AtomicReferenceFieldUpdater.newUpdater(SynchronizedLazySetSingleton.class, ConcurrentMap.class, "map");
@@ -86,16 +100,21 @@ public class DoubleCheckedLockingInitial {
     @Param({"0", "20"})
     public int work;
 
-    @Param({"synchronizedVolatileSet", "synchronizedLazySet", "compareAndSet"})
+    @Param({"synchronized", "synchronizedVolatileSet", "synchronizedLazySet", "compareAndSet"})
     public String type;
 
     private Supplier<Supplier<ConcurrentMap<Object, Object>>> singletonFactory;
 
     private static final Object KEY = new Object();
 
+    private Supplier<ConcurrentMap<Object, Object>> singleton;
+
     @Setup
     public void init() {
         switch (type) {
+            case "synchronized":
+                singletonFactory = SynchronizedSingleton::new;
+                break;
             case "synchronizedVolatileSet":
                 singletonFactory = SynchronizedVolatileSetSingleton::new;
                 break;
@@ -108,6 +127,8 @@ public class DoubleCheckedLockingInitial {
             default:
                 throw new UnsupportedOperationException("not supported type = " + type);
         }
+        singleton = singletonFactory.get();
+        singleton.get().put(KEY, KEY);
     }
 
     private static Object createValue() {
@@ -137,5 +158,26 @@ public class DoubleCheckedLockingInitial {
             Blackhole.consumeCPU(work);
         }
         return map;
+    }
+
+    @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public Object steadyStateGet() {
+        var map = singleton.get();
+        if (work > 0) {
+            Blackhole.consumeCPU(work);
+        }
+        return map;
+    }
+
+    @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public Object steadyStateGetAndGet() {
+        var map = singleton.get();
+        var value = map.get(KEY);
+        if (work > 0) {
+            Blackhole.consumeCPU(work);
+        }
+        return value;
     }
 }
