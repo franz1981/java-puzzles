@@ -27,6 +27,7 @@ public class DoubleCheckedLockingInitial {
                 return map;
             }
             map = new ConcurrentHashMap<>();
+            this.map = map;
             return map;
         }
     }
