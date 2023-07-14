@@ -135,9 +135,13 @@ public class SynteticInvokeInterface {
 
     @Param({"default", "binary", "jmp", "tiered"})
     private String type;
-    private Predicate<Integer> predicate3;
+
+    @Param({"false", "true"})
+    private boolean outlier;
     private Predicate<Integer> predicate1;
     private Predicate<Integer> predicate2;
+    private Predicate<Integer> predicate3;
+    private Predicate<Integer> predicate10;
     private Integer arg;
 
     @Setup
@@ -148,7 +152,8 @@ public class SynteticInvokeInterface {
                 predicate1 = value -> value == null;
                 predicate2 = value -> value == null;
                 predicate3 = value -> value == null;
-                if (Set.of(predicate1.getClass(), predicate2.getClass(), predicate3.getClass()).size() < 3) {
+                predicate10 = value -> value == null;
+                if (Set.of(predicate1.getClass(), predicate2.getClass(), predicate3.getClass(), predicate10.getClass()).size() < 3) {
                     throw new IllegalStateException("predicates should belong to different specific concrete types!");
                 }
                 break;
@@ -157,18 +162,24 @@ public class SynteticInvokeInterface {
                 predicate1 = new FixedSizedGeneratedPredicate10<>(value -> value == null);
                 predicate2 = new FixedSizedGeneratedPredicate10<>(value -> value == null);
                 predicate3 = new FixedSizedGeneratedPredicate10<>(value -> value == null);
+                FixedSizedGeneratedPredicate10.predicateId.set(9);
+                predicate10 = new FixedSizedGeneratedPredicate10<>(value -> value == null);
                 break;
             case "jmp":
                 FixedSizedGeneratedPredicate11.predicateId.set(0);
                 predicate1 = new FixedSizedGeneratedPredicate11<>(value -> value == null);
                 predicate2 = new FixedSizedGeneratedPredicate11<>(value -> value == null);
                 predicate3 = new FixedSizedGeneratedPredicate11<>(value -> value == null);
+                FixedSizedGeneratedPredicate11.predicateId.set(9);
+                predicate10 = new FixedSizedGeneratedPredicate11<>(value -> value == null);
                 break;
             case "tiered":
                 FixedSizedGeneratedPredicateTiered20.predicateId.set(0);
                 predicate1 = new FixedSizedGeneratedPredicateTiered20<>(value -> value == null);
                 predicate2 = new FixedSizedGeneratedPredicateTiered20<>(value -> value == null);
                 predicate3 = new FixedSizedGeneratedPredicateTiered20<>(value -> value == null);
+                FixedSizedGeneratedPredicateTiered20.predicateId.set(9);
+                predicate10 = new FixedSizedGeneratedPredicateTiered20<>(value -> value == null);
                 break;
         }
     }
@@ -190,6 +201,9 @@ public class SynteticInvokeInterface {
         bh.consume(eval(predicate1, arg));
         bh.consume(eval(predicate2, arg));
         bh.consume(eval(predicate3, arg));
+        if (outlier) {
+            bh.consume(eval(predicate10, arg));
+        }
     }
 
     @Benchmark
@@ -198,6 +212,9 @@ public class SynteticInvokeInterface {
         bh.consume(inlinedEval(predicate1, arg));
         bh.consume(inlinedEval(predicate2, arg));
         bh.consume(inlinedEval(predicate3, arg));
+        if (outlier) {
+            bh.consume(inlinedEval(predicate10, arg));
+        }
     }
 
 }
