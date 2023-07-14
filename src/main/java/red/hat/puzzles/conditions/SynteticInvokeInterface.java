@@ -74,8 +74,6 @@ public class SynteticInvokeInterface {
 
         @Override
         public boolean test(T o) {
-            FixedSizedGeneratedPredicate10.predicateId.set(0);
-            FixedSizedGeneratedPredicate11.predicateId.set(0);
             return switch (type) {
                 case 0 -> predicate.test(o);
                 case 1 -> predicate.test(o);
@@ -87,21 +85,62 @@ public class SynteticInvokeInterface {
                 case 7 -> predicate.test(o);
                 case 8 -> predicate.test(o);
                 case 9 -> predicate.test(o);
-                case 10 -> predicate.test(o);
+                default -> switch (type) {
+                    case 10 -> predicate.test(o);
+                    case 11 -> predicate.test(o);
+                    case 12 -> predicate.test(o);
+                    case 13 -> predicate.test(o);
+                    case 14 -> predicate.test(o);
+                    case 15 -> predicate.test(o);
+                    case 16 -> predicate.test(o);
+                    case 17 -> predicate.test(o);
+                    case 18 -> predicate.test(o);
+                    case 19 -> predicate.test(o);
+                    default -> predicate.test(o);
+                };
+            };
+        }
+    }
+
+    private static class FixedSizedGeneratedPredicateTiered20<T> implements Predicate<T> {
+
+        private static final AtomicInteger predicateId = new AtomicInteger();
+
+        private final int type;
+        private final Predicate<T> predicate;
+
+        public FixedSizedGeneratedPredicateTiered20(Predicate<T> predicate) {
+            this.type = predicateId.getAndIncrement();
+            this.predicate = predicate;
+        }
+
+        @Override
+        public boolean test(T o) {
+            return switch (type) {
+                case 0 -> predicate.test(o);
+                case 1 -> predicate.test(o);
+                case 2 -> predicate.test(o);
+                case 3 -> predicate.test(o);
+                case 4 -> predicate.test(o);
+                case 5 -> predicate.test(o);
+                case 6 -> predicate.test(o);
+                case 7 -> predicate.test(o);
+                case 8 -> predicate.test(o);
+                case 9 -> predicate.test(o);
                 default -> predicate.test(o);
             };
         }
     }
 
 
-    @Param({"default", "binary", "jmp"})
+    @Param({"default", "binary", "jmp", "tiered"})
     private String type;
     private Predicate<Integer> predicate3;
     private Predicate<Integer> predicate1;
     private Predicate<Integer> predicate2;
     private Integer arg;
 
-    @Setup(Level.Trial)
+    @Setup
     public void init() {
         switch (type) {
             case "default":
@@ -114,14 +153,22 @@ public class SynteticInvokeInterface {
                 }
                 break;
             case "binary":
+                FixedSizedGeneratedPredicate10.predicateId.set(0);
                 predicate1 = new FixedSizedGeneratedPredicate10<>(value -> value == null);
                 predicate2 = new FixedSizedGeneratedPredicate10<>(value -> value == null);
                 predicate3 = new FixedSizedGeneratedPredicate10<>(value -> value == null);
                 break;
             case "jmp":
+                FixedSizedGeneratedPredicate11.predicateId.set(0);
                 predicate1 = new FixedSizedGeneratedPredicate11<>(value -> value == null);
                 predicate2 = new FixedSizedGeneratedPredicate11<>(value -> value == null);
                 predicate3 = new FixedSizedGeneratedPredicate11<>(value -> value == null);
+                break;
+            case "tiered":
+                FixedSizedGeneratedPredicateTiered20.predicateId.set(0);
+                predicate1 = new FixedSizedGeneratedPredicateTiered20<>(value -> value == null);
+                predicate2 = new FixedSizedGeneratedPredicateTiered20<>(value -> value == null);
+                predicate3 = new FixedSizedGeneratedPredicateTiered20<>(value -> value == null);
                 break;
         }
     }
@@ -138,17 +185,19 @@ public class SynteticInvokeInterface {
     }
 
     @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public void eval(Blackhole bh) {
-        bh.consume(eval(predicate3, arg));
         bh.consume(eval(predicate1, arg));
         bh.consume(eval(predicate2, arg));
+        bh.consume(eval(predicate3, arg));
     }
 
     @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public void inlinedEval(Blackhole bh) {
-        bh.consume(inlinedEval(predicate3, arg));
         bh.consume(inlinedEval(predicate1, arg));
         bh.consume(inlinedEval(predicate2, arg));
+        bh.consume(inlinedEval(predicate3, arg));
     }
 
 }
