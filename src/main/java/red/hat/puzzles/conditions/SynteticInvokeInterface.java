@@ -4,77 +4,126 @@ import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.CompilerControl;
 import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
-import red.hat.puzzles.conditions.SynteticInvokeInterface.GeneratedPredicate.Type;
 
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
-@State(Scope.Thread)
-@Fork(2)
+@State(Scope.Benchmark)
+@Fork(value = 2, jvmArgsAppend = "-XX:MinJumpTableSize=10")
 @Warmup(iterations = 10, time = 400, timeUnit = TimeUnit.MILLISECONDS)
 @Measurement(iterations = 10, time = 200, timeUnit = TimeUnit.MILLISECONDS)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @BenchmarkMode(Mode.AverageTime)
 public class SynteticInvokeInterface {
 
-    public static class GeneratedPredicate implements Predicate<Integer> {
+    // https://stackoverflow.com/questions/44988841/force-tableswitch-instead-of-lookupswitch
+    // We're forcing -XX:MinJumpTableSize=10 and construct the generated predicates by consequence
+    private static class FixedSizedGeneratedPredicate10<T> implements Predicate<T> {
 
-        public enum Type {
-            getInt, getLong, getString
-        }
+        private static final AtomicInteger predicateId = new AtomicInteger();
 
-        private final Type type;
-        private final Predicate<Integer> predicate;
+        private final int type;
+        private final Predicate<T> predicate;
 
-        public GeneratedPredicate(Type type, Predicate<Integer> predicate) {
-            this.type = type;
+        public FixedSizedGeneratedPredicate10(Predicate<T> predicate) {
+            this.type = predicateId.getAndIncrement();
             this.predicate = predicate;
         }
 
         @Override
-        public boolean test(Integer integer) {
-            switch (type) {
-
-            case getInt -> {
-                // how many types? 1!!!!
-                // is inlined!
-                return predicate.test(integer);
-            }
-            case getLong -> {
-                return predicate.test(integer);
-            }
-            case getString -> {
-                return predicate.test(integer);
-            }
-            }
-            throw new AssertionError();
+        public boolean test(T o) {
+            return switch (type) {
+                case 0 -> predicate.test(o);
+                case 1 -> predicate.test(o);
+                case 2 -> predicate.test(o);
+                case 3 -> predicate.test(o);
+                case 4 -> predicate.test(o);
+                case 5 -> predicate.test(o);
+                case 6 -> predicate.test(o);
+                case 7 -> predicate.test(o);
+                case 8 -> predicate.test(o);
+                case 9 -> predicate.test(o);
+                default -> predicate.test(o);
+            };
         }
     }
 
-    private Predicate<Integer> getInt;
-    private Predicate<Integer> getLong;
-    private Predicate<Integer> getString;
-    private Predicate<Integer> customGetInt;
-    private Predicate<Integer> customGetLong;
-    private Predicate<Integer> customGetString;
+    private static class FixedSizedGeneratedPredicate11<T> implements Predicate<T> {
+
+        private static final AtomicInteger predicateId = new AtomicInteger();
+
+        private final int type;
+        private final Predicate<T> predicate;
+
+        public FixedSizedGeneratedPredicate11(Predicate<T> predicate) {
+            this.type = predicateId.getAndIncrement();
+            this.predicate = predicate;
+        }
+
+        @Override
+        public boolean test(T o) {
+            FixedSizedGeneratedPredicate10.predicateId.set(0);
+            FixedSizedGeneratedPredicate11.predicateId.set(0);
+            return switch (type) {
+                case 0 -> predicate.test(o);
+                case 1 -> predicate.test(o);
+                case 2 -> predicate.test(o);
+                case 3 -> predicate.test(o);
+                case 4 -> predicate.test(o);
+                case 5 -> predicate.test(o);
+                case 6 -> predicate.test(o);
+                case 7 -> predicate.test(o);
+                case 8 -> predicate.test(o);
+                case 9 -> predicate.test(o);
+                case 10 -> predicate.test(o);
+                default -> predicate.test(o);
+            };
+        }
+    }
+
+
+    @Param({"default", "binary", "jmp"})
+    private String type;
+    private Predicate<Integer> predicate3;
+    private Predicate<Integer> predicate1;
+    private Predicate<Integer> predicate2;
     private Integer arg;
 
-    @Setup
+    @Setup(Level.Trial)
     public void init() {
-        getInt = value -> value == null;
-        getLong = value -> value == null;
-        getString = value -> value == null;
-        customGetInt = new GeneratedPredicate(Type.getInt, value -> value == null);
-        customGetLong = new GeneratedPredicate(Type.getLong, value -> value == null);
-        customGetString = new GeneratedPredicate(Type.getString, value -> value == null);
+        switch (type) {
+            case "default":
+                // these are on purpose different ones!
+                predicate1 = value -> value == null;
+                predicate2 = value -> value == null;
+                predicate3 = value -> value == null;
+                if (Set.of(predicate1.getClass(), predicate2.getClass(), predicate3.getClass()).size() < 3) {
+                    throw new IllegalStateException("predicates should belong to different specific concrete types!");
+                }
+                break;
+            case "binary":
+                predicate1 = new FixedSizedGeneratedPredicate10<>(value -> value == null);
+                predicate2 = new FixedSizedGeneratedPredicate10<>(value -> value == null);
+                predicate3 = new FixedSizedGeneratedPredicate10<>(value -> value == null);
+                break;
+            case "jmp":
+                predicate1 = new FixedSizedGeneratedPredicate11<>(value -> value == null);
+                predicate2 = new FixedSizedGeneratedPredicate11<>(value -> value == null);
+                predicate3 = new FixedSizedGeneratedPredicate11<>(value -> value == null);
+                break;
+        }
     }
 
     public static <T> boolean inlinedEval(Predicate<T> predicate, T value) {
@@ -90,30 +139,16 @@ public class SynteticInvokeInterface {
 
     @Benchmark
     public void eval(Blackhole bh) {
-        bh.consume(eval(getInt, arg));
-        bh.consume(eval(getLong, arg));
-        bh.consume(eval(getString, arg));
+        bh.consume(eval(predicate3, arg));
+        bh.consume(eval(predicate1, arg));
+        bh.consume(eval(predicate2, arg));
     }
 
     @Benchmark
     public void inlinedEval(Blackhole bh) {
-        bh.consume(inlinedEval(getInt, arg));
-        bh.consume(inlinedEval(getLong, arg));
-        bh.consume(inlinedEval(getString, arg));
-    }
-
-    @Benchmark
-    public void customEval(Blackhole bh) {
-        bh.consume(eval(customGetInt, arg));
-        bh.consume(eval(customGetLong, arg));
-        bh.consume(eval(customGetString, arg));
-    }
-
-    @Benchmark
-    public void customInlinedEval(Blackhole bh) {
-        bh.consume(inlinedEval(customGetInt, arg));
-        bh.consume(inlinedEval(customGetLong, arg));
-        bh.consume(inlinedEval(customGetString, arg));
+        bh.consume(inlinedEval(predicate3, arg));
+        bh.consume(inlinedEval(predicate1, arg));
+        bh.consume(inlinedEval(predicate2, arg));
     }
 
 }
