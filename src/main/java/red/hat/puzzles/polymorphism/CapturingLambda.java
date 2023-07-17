@@ -17,6 +17,7 @@ public class CapturingLambda {
     private int[] setOfValues;
     private int index;
     private int reference;
+    private BooleanSupplier[] suppliers;
 
     @Setup
     public void init() {
@@ -24,10 +25,16 @@ public class CapturingLambda {
         for (int i = 0; i < values; i++) {
             setOfValues[i] = i;
         }
+        suppliers = new BooleanSupplier[values];
+        for (int i = 0; i < values; i++) {
+            int value = setOfValues[i];
+            suppliers[i] = () -> this.reference == value;
+        }
         reference = -1;
         if (values > 3) {
             System.err.println("This benchmark has been designed with max 3 values: the not-capturing test case is now invalid");
         }
+
     }
 
     private int nextValue() {
@@ -68,6 +75,16 @@ public class CapturingLambda {
         bh.consume(supplier);
         return invoke(supplier);
     }
+
+    @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public boolean pooledCaptureAndInvoke(Blackhole bh) {
+        var previousValue = nextValue();
+        BooleanSupplier supplier = suppliers[previousValue];
+        bh.consume(supplier);
+        return invoke(supplier);
+    }
+
 
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public boolean invoke(BooleanSupplier supplier) {
