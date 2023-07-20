@@ -39,10 +39,16 @@ public class RequireNonNullCheckcastScalability {
         }
     }
 
+    public static class AlienNotDuplicatedContext implements Context {
+
+    }
+
     private Context msg;
 
     @Param({"false", "true"})
     public boolean typePollution;
+    @Param({"false", "true"})
+    public boolean typePollutionNotInternalType;
 
     @Setup
     public void init(Blackhole bh) {
@@ -51,7 +57,12 @@ public class RequireNonNullCheckcastScalability {
             for (int i = 0; i < 11000; i++) {
                 bh.consume(isDuplicated(msg));
             }
-            // deopt on warmup
+        }
+        if (typePollutionNotInternalType) {
+            msg = new AlienNotDuplicatedContext();
+            for (int i = 0; i < 11000; i++) {
+                bh.consume(isDuplicated(msg));
+            }
         }
         msg = new DuplicatedContext();
     }
@@ -62,7 +73,10 @@ public class RequireNonNullCheckcastScalability {
     // return Objects.requireNonNull((InternalContext) message).isDuplicated();
     private static boolean isDuplicated(Context message) {
         Context actual = Objects.requireNonNull(message);
-        return ((InternalContext) actual).isDuplicated();
+        if (actual instanceof InternalContext) {
+            ((InternalContext) actual).isDuplicated();
+        }
+        return false;
     }
 
     @Benchmark
