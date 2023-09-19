@@ -15,7 +15,7 @@ public class ToLowerCaseAndDotted {
     public String name;
     public StringBuilder sb;
 
-    @Setup(Level.Invocation)
+    @Setup
     public void setUp() {
         name = "MY_ENV_VARIABLE_FOO";
         sb = new StringBuilder(name.length());
