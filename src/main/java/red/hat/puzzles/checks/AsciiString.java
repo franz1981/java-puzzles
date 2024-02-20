@@ -34,8 +34,8 @@ public final class AsciiString {
             return false;
         }
 
-        for (int i = 0; i < length(); ++i) {
-            if (!equalsIgnoreCase(ascii[i], other.ascii[i])) {
+        for (int i = arrayOffset(), j = other.arrayOffset(), end = i + length(); i < end; ++i, ++j) {
+            if (!equalsIgnoreCase(ascii[i], other.ascii[j])) {
                 return false;
             }
         }
