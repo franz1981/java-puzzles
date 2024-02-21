@@ -29,7 +29,7 @@ public class LowerCaseComparison {
 
     @Setup
     public void init() {
-        asciiStrings = new AsciiString("Connection");
+        asciiStrings = new AsciiString(same ? "connection" : "Connection");
         otherAscii = new AsciiString("connection");
     }
 
