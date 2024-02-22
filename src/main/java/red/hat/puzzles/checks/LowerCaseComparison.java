@@ -124,7 +124,7 @@ public class LowerCaseComparison {
             otherAscii = new AsciiString(string);
         } else {
             bytes[0] = (byte) 'C';
-            asciiStrings = new AsciiString(new String(bytes));
+            otherAscii = new AsciiString(new String(bytes));
         }
     }
 
