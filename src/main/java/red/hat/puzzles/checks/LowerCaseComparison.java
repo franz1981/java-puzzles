@@ -2,6 +2,7 @@ package red.hat.puzzles.checks;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.CompilerControl;
 import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
@@ -71,38 +72,43 @@ public class LowerCaseComparison {
      *           │ │                                                            ; - red.hat.puzzles.checks.AsciiString::unoptimizedContentEqualsIgnoreCase@45 (line 37)
      *           │ │                                                            ; - red.hat.puzzles.checks.LowerCaseComparison::unoptimizedContentEqualsIgnoreCase@8 (line 41)
      *
-     * Which shows that
-     * - the optimized version has a data dependency on the %rdx register, which is used as index by both array's load, but as destination for the second one,
-     * preventing both loads to be executed in parallel
-     * - the unpotimized version doesn't have such data dependency and the cycles counters indeed is accumulated after both loads,
-     * sign of more skidding and better pipeline usage
-     *
      * Running perfnorm with 4096 values over both indeed shows these interesting differences:
      *
-     * LowerCaseComparison.optimizedContentEqualsIgnoreCase                              true    4096  avgt   10   1961.759 ±  5.141      ns/op
-     * LowerCaseComparison.optimizedContentEqualsIgnoreCase:instructions                 true    4096  avgt       31568.731                #/op
-     * LowerCaseComparison.optimizedContentEqualsIgnoreCase:stalled-cycles-backend       true    4096  avgt           8.414                #/op
-     * LowerCaseComparison.optimizedContentEqualsIgnoreCase:stalled-cycles-frontend      true    4096  avgt           3.048                #/op
-     *
+     * LowerCaseComparison.optimizedContentEqualsIgnoreCase                              true    4096  avgt   10   1961.759 ±  5.141      ns/op     *
      * LowerCaseComparison.unoptimizedContentEqualsIgnoreCase                            true    4096  avgt   10   1765.949 ± 14.117      ns/op
-     * LowerCaseComparison.unoptimizedContentEqualsIgnoreCase:instructions               true    4096  avgt       35540.522                #/op
-     * LowerCaseComparison.unoptimizedContentEqualsIgnoreCase:stalled-cycles-backend     true    4096  avgt           7.364                #/op
-     * LowerCaseComparison.unoptimizedContentEqualsIgnoreCase:stalled-cycles-frontend    true    4096  avgt           1.128                #/op
      *
-     * Which indeed point to a slightly more stalled cycles on backend for the optimized version, but nearly 3 times more on frontend, likely due to the
-     * data dependency.
-     *
-     * A proper top-down analysis should be performed to pin-point exactly what's going on.
-     *
-     * Sadly on AMD it requires using a slightly different naming as
+     * On an AMD box would make sense to use top-down analysis to understand the differences:
      *
      * $ perf stat -M PipelineL1
      *
      * See https://perf.wiki.kernel.org/index.php/Top-Down_Analysis for more details on the Intel counter-part.
      *
+     * Another interesting experiment would be to use https://uica.uops.info/ to understand the differences in the
+     * usage of pipelines, to outline port contention and/or lack of micro/macro fusion.
      *
+     * The assembly to use on such tool should be:
      *
+     * loop:
+     *      movslq %ebp,%rdx
+     *      movsbl 0x10(%r11,%rdx,1),%r8d
+     *      movsbl 0x10(%r10,%rdx,1),%edx
+     *      cmp    %edx,%r8d
+     *      jne    exit
+     *      inc    %ebp
+     *      cmp    %r13d,%ebp
+     *      jl     loop
      *
+     *      vs
+     * loop:
+     *      movsbl 0x10(%r8,%rax,1),%r10d
+     *      mov    %eax,%r11d
+     *      add    %edx,%r11d
+     *      movsbl 0x10(%rsi,%r11,1),%r9d
+     *      cmp    %r9d,%r10d
+     *      jne    exit
+     *      inc    %eax
+     *      cmp    %ebp,%eax
+     *      jl     loop
      *
      */
 
@@ -129,13 +135,30 @@ public class LowerCaseComparison {
     }
 
     @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public boolean unoptimizedContentEqualsIgnoreCase() {
         return asciiStrings.unoptimizedContentEqualsIgnoreCase(otherAscii);
     }
 
     @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public boolean optimizedContentEqualsIgnoreCase() {
         return asciiStrings.optimizedContentEqualsIgnoreCase(otherAscii);
+    }
+
+    public static void main(String[] args) {
+        boolean optimized = true;
+        LowerCaseComparison test = new LowerCaseComparison();
+        test.same = true;
+        test.size = 4096;
+        test.init();
+        while (true) {
+            if (optimized) {
+                test.optimizedContentEqualsIgnoreCase();
+            } else {
+                test.unoptimizedContentEqualsIgnoreCase();
+            }
+        }
     }
 
 }
