@@ -18,12 +18,6 @@ import java.util.concurrent.TimeUnit;
  * The code emulated is https://github.com/netty/netty/blob/4.1/codec-http/src/main/java/io/netty/handler/codec/http/HttpObjectEncoder.java#L83
  * in the context of the Vert-x usage (see https://github.com/eclipse-vertx/vert.x/blob/09970b9ed4d49ee95722720766f632f89b4a3d09/src/main/java/io/vertx/core/http/impl/Http1xServerResponse.java#L411)
  * while running Quarkus https://github.com/TechEmpower/FrameworkBenchmarks.
- * <p>
- * TODO:
- * - [EASY] add some BlackHole::consumeCPU to emulate some works
- * - [EASY] experiments polluting the type profiles of instanceof checks in the warmup phase
- * (see more info on https://wiki.openjdk.org/display/HotSpot/MethodData) *
- * - [HARD] experiments inlining effects (if any)
  */
 @State(Scope.Thread)
 @Measurement(iterations = 5, time = 200, timeUnit = TimeUnit.MILLISECONDS)
@@ -33,12 +27,17 @@ import java.util.concurrent.TimeUnit;
 @Fork(2)
 public class InstanceOfScalabilityBenchmark {
 
+    /**
+     * Please run: red.hat.puzzles.polymorphism.InstanceOfScalabilityBenchmark.encodeFullType -pencoderType=a -ppollutionCases=20000
+     *
+     * with -t 1 and -t N (where N > 1) and compare the results.
+     */
     static class AssembledHttpResponse implements HttpResponse, HttpContent {
 
         @Override
         @CompilerControl(CompilerControl.Mode.DONT_INLINE)
         public void release() {
-            // NOP but still complex enough to not been inlined
+
         }
     }
 
@@ -49,11 +48,27 @@ public class InstanceOfScalabilityBenchmark {
     private Object assembledHttpResponse;
     private Object assembledFullHttpResponse;
 
+    /**
+     * Type a is using the HttpObjectEncoderA and type b is using the HttpObjectEncoderB.
+     *
+     * The former is using the original code from Netty, which perform different type checks to encode the object,
+     * while the latter try to short-circuit the checks for FullHttpMessage (and others) by checking first mixin marker
+     * interfaces.
+     *
+     * The latter is supposed to better scale than the former.
+     */
     @Param({"a", "b"})
     private String encoderType;
 
+    /**
+     * This parameter is going to further pollute the type profile of the instanceof checks by artificially using
+     * the already existing 2 concrete types, extending them to use 4 different types.
+     */
+    @Param({"false", "true"})
+    private boolean polluteExistingTypes;
+
     @Param({"0", "20000"})
-    private int typePollution;
+    private int pollutionCases;
 
     private Encoder encoder;
 
@@ -69,22 +84,27 @@ public class InstanceOfScalabilityBenchmark {
             default:
                 throw new AssertionError("not supported encoder");
         }
-        if (typePollution > 0) {
-            // this is using 4 different types to pollute the type profile of all the instanceof checks met
-            Object[] types = new Object[] {
-               new AssembledHttpResponse(),
-               new AssembledHttpResponse() {
-
-               },
-               new AssembledFullHttpResponse(),
-               new AssembledFullHttpResponse() {
-
-               }
-            };
-            for (int i = 0; i < typePollution; i++) {
+        if (pollutionCases > 0) {
+            Object[] types = polluteExistingTypes ?
+                    new Object[]{
+                            new AssembledHttpResponse(),
+                            new AssembledFullHttpResponse(),
+                            // this is simulating users extending existing types (eg to add telemetry) and using them along with the existing ones
+                            new AssembledHttpResponse() {
+                            },
+                            new AssembledFullHttpResponse() {
+                            }
+                    } :
+                    new Object[]{new AssembledHttpResponse(), new AssembledFullHttpResponse()};
+            for (int i = 0; i < pollutionCases; i++) {
                 for (Object type : types) {
                     encoder.encode(type);
                 }
+            }
+        } else {
+            if (polluteExistingTypes) {
+                // kill this fork
+                System.exit(0);
             }
         }
         assembledHttpResponse = new AssembledHttpResponse();
