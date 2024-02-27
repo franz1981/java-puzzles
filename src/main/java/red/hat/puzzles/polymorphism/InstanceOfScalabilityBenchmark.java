@@ -28,6 +28,8 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Thread)
 @Measurement(iterations = 5, time = 200, timeUnit = TimeUnit.MILLISECONDS)
 @Warmup(iterations = 5, time = 200, timeUnit = TimeUnit.MILLISECONDS)
+@BenchmarkMode(Mode.AverageTime)
+@OutputTimeUnit(TimeUnit.NANOSECONDS)
 @Fork(2)
 public class InstanceOfScalabilityBenchmark {
 
@@ -57,8 +59,6 @@ public class InstanceOfScalabilityBenchmark {
 
     @Setup
     public void init() {
-        assembledHttpResponse = new AssembledHttpResponse();
-        assembledFullHttpResponse = new AssembledFullHttpResponse();
         switch (encoderType) {
             case "a":
                 encoder = new HttpObjectEncoderA<HttpResponse>();
@@ -69,17 +69,26 @@ public class InstanceOfScalabilityBenchmark {
             default:
                 throw new AssertionError("not supported encoder");
         }
-        // using all types would poison the type profile:
-        // it's still a bit noisy because code shape depends on frequencies of types
-        for (int i = 0; i < typePollution; i++) {
-            encodeAllTypes();
-        }
-    }
+        if (typePollution > 0) {
+            // this is using 4 different types to pollute the type profile of all the instanceof checks met
+            Object[] types = new Object[] {
+               new AssembledHttpResponse(),
+               new AssembledHttpResponse() {
 
-    @Benchmark
-    public void encodeAllTypes() {
-        encoder.encode(assembledFullHttpResponse);
-        encoder.encode(assembledHttpResponse);
+               },
+               new AssembledFullHttpResponse(),
+               new AssembledFullHttpResponse() {
+
+               }
+            };
+            for (int i = 0; i < typePollution; i++) {
+                for (Object type : types) {
+                    encoder.encode(type);
+                }
+            }
+        }
+        assembledHttpResponse = new AssembledHttpResponse();
+        assembledFullHttpResponse = new AssembledFullHttpResponse();
     }
 
     @Benchmark
