@@ -45,6 +45,19 @@ public class InstanceOfScalabilityBenchmark {
 
     }
 
+    static class DefaultHttpResponse implements HttpResponse, HttpContent {
+
+        @Override
+        @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+        public void release() {
+
+        }
+    }
+
+    static class DefaultFullHttpResponse extends DefaultHttpResponse implements FullHttpResponse {
+
+    }
+
     private Object assembledHttpResponse;
     private Object assembledFullHttpResponse;
 
@@ -85,15 +98,15 @@ public class InstanceOfScalabilityBenchmark {
                 throw new AssertionError("not supported encoder");
         }
         if (pollutionCases > 0) {
+            // it is making the non-used default types twice as more frequent than the used ones
             Object[] types = polluteExistingTypes ?
                     new Object[]{
                             new AssembledHttpResponse(),
                             new AssembledFullHttpResponse(),
-                            // this is simulating users extending existing types (eg to add telemetry) and using them along with the existing ones
-                            new AssembledHttpResponse() {
-                            },
-                            new AssembledFullHttpResponse() {
-                            }
+                            new DefaultHttpResponse(),
+                            new DefaultFullHttpResponse(),
+                            new DefaultHttpResponse(),
+                            new DefaultFullHttpResponse()
                     } :
                     new Object[]{new AssembledHttpResponse(), new AssembledFullHttpResponse()};
             for (int i = 0; i < pollutionCases; i++) {
