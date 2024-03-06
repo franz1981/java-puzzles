@@ -82,6 +82,9 @@ public class LockCoarsening {
      * LockCoarsening.reentrantField                        thrpt   10  170.829 ± 1.260  ops/us
      * LockCoarsening.reentrantLocal                        thrpt   10    9.387 ± 0.340  ops/us
      * LockCoarsening.reentrantLocalWithInlinedMethod       thrpt   10  271.258 ± 5.408  ops/us
+     *
+     *https://github.com/openjdk/jdk/blob/9f7094079b6eb6b60b345955dba358a2d5c90931/src/hotspot/share/oops/generateOopMap.cpp#L1800
+     * shows that monitorenter is not compiled for reentrantLocal being recursive.
      */
     @Benchmark
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
