@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 @Measurement(iterations = 5, time = 200, timeUnit = TimeUnit.MILLISECONDS)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Fork(2)
-public class LockCoersing {
+public class LockCoarsening {
 
     private static class SyncHolder {
 
@@ -71,6 +71,45 @@ public class LockCoersing {
     public void init() {
         objValue = new Object();
         holder = new SyncHolder();
+    }
+
+    /**
+     * reentrant fast-locking seems to behave differently if using a local variable vs an instance field
+     *
+     * Running on JDK 17:
+     *
+     * Benchmark                          Mode  Cnt    Score   Error   Units
+     * LockCoarsening.notReentrantField  thrpt   10  242.901 ? 0.780  ops/us
+     * LockCoarsening.reentrantField     thrpt   10  142.707 ? 2.195  ops/us
+     * LockCoarsening.reentrantLocal     thrpt   10   39.118 ? 1.999  ops/us
+     */
+    @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public Object notReentrantField() {
+        synchronized (objValue) {
+            return objValue;
+        }
+    }
+
+    @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public Object reentrantField() {
+        synchronized (objValue) {
+            synchronized (objValue) {
+                return objValue;
+            }
+        }
+    }
+
+    @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public Object reentrantLocal() {
+        var lock = objValue;
+        synchronized (lock) {
+            synchronized (lock) {
+                return objValue;
+            }
+        }
     }
 
     /**
