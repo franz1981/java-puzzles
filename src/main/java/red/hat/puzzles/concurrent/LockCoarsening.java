@@ -115,6 +115,12 @@ public class LockCoarsening {
     /**
      * The setObjsOnHolder shows that the synchronized blocks are merged to become a single one,
      * if value is saved in a local variable vs read it again from an instance field
+     *
+     * Benchmark                                                        Mode  Cnt    Score   Error   Units
+     * LockCoarsening.setObjsOnHolderInInstanceField                   thrpt   10   93.529 ± 0.453  ops/us
+     * LockCoarsening.setObjsOnHolderInInstanceFieldUsingExternalLock  thrpt   10   91.665 ± 1.216  ops/us
+     * LockCoarsening.setObjsOnHolderInLocalField                      thrpt   10  248.097 ± 3.917  ops/us
+     * LockCoarsening.setObjsOnHolderInLocalFieldUsingExternalLock     thrpt   10   83.625 ± 0.441  ops/us
      */
     @Benchmark
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
@@ -157,6 +163,16 @@ public class LockCoarsening {
         holder.setObj2ExternalLock(value);
         holder.setObj3ExternalLock(value);
     }
+
+    /**
+     *
+     * This part of the banchmark mimic creation of a fresh new holder and setting the obj fields.
+     *
+     * Benchmark                                              Mode  Cnt    Score   Error   Units
+     * LockCoarsening.createHolderAndSetObjs                 thrpt   10   67.558 ± 0.471  ops/us
+     * LockCoarsening.createHolderInLocalFieldAndSetObjs     thrpt   10  119.812 ± 1.485  ops/us
+     * LockCoarsening.createHolderInlinedInLocalsAndSetObjs  thrpt   10  119.136 ± 0.485  ops/us
+     */
 
     @Benchmark
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
