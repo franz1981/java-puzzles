@@ -77,11 +77,11 @@ public class LockCoarsening {
      * reentrant fast-locking seems to behave differently if using a local variable vs an instance field
      *
      * Running on JDK 17:
-     *
-     * Benchmark                          Mode  Cnt    Score   Error   Units
-     * LockCoarsening.notReentrantField  thrpt   10  242.901 ? 0.780  ops/us
-     * LockCoarsening.reentrantField     thrpt   10  142.707 ? 2.195  ops/us
-     * LockCoarsening.reentrantLocal     thrpt   10   39.118 ? 1.999  ops/us
+     * Benchmark                                             Mode  Cnt    Score   Error   Units
+     * LockCoarsening.notReentrantField                     thrpt   10  270.091 ± 8.348  ops/us
+     * LockCoarsening.reentrantField                        thrpt   10  170.829 ± 1.260  ops/us
+     * LockCoarsening.reentrantLocal                        thrpt   10    9.387 ± 0.340  ops/us
+     * LockCoarsening.reentrantLocalWithInlinedMethod       thrpt   10  271.258 ± 5.408  ops/us
      */
     @Benchmark
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
@@ -111,6 +111,24 @@ public class LockCoarsening {
             }
         }
     }
+
+    @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public Object reentrantLocalWithInlinedMethod() {
+        var lock = objValue;
+        synchronized (lock) {
+            return getObjectWithLock(lock);
+        }
+    }
+
+
+    @CompilerControl(CompilerControl.Mode.INLINE)
+    private Object getObjectWithLock(Object lock) {
+        synchronized (lock) {
+            return objValue;
+        }
+    }
+
 
     /**
      * The setObjsOnHolder shows that the synchronized blocks are merged to become a single one,
