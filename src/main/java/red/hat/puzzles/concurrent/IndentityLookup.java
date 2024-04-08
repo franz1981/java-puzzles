@@ -115,6 +115,16 @@ public class IndentityLookup {
         return hashMap.get(lastClassLoader);
     }
 
+    @Benchmark
+    public Object classLoaderHashCode() {
+        return missingClassLoader.hashCode();
+    }
+
+    @Benchmark
+    public Object hashMapGetFirstParallel() {
+        return hashMap.get(firstClassLoader);
+    }
+
     @TearDown
     public void tearDown() throws InterruptedException {
         unblock.countDown();
