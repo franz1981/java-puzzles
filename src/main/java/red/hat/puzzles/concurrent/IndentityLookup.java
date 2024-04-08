@@ -28,7 +28,7 @@ public class IndentityLookup {
 
     private SingleWriterCopyOnWriteArrayIdentityMap<ClassLoader, Object> arrayMap;
     private Map<ClassLoader, Object> hashMap;
-    @Param({"2", "10"})
+    @Param({"1"})
     public int size;
     @Param({"true"})
     public boolean disableHashCodeIntrinsics;
@@ -40,7 +40,8 @@ public class IndentityLookup {
 
     private ExecutorService executor;
 
-    private static final class CustomClassLoader extends ClassLoader {  }
+    private static final class CustomClassLoader extends ClassLoader {
+    }
 
     @Setup
     public void init(Blackhole bh) {
@@ -84,14 +85,14 @@ public class IndentityLookup {
             hashMap.put(classLoader, new Object());
             if (disableHashCodeIntrinsics) {
                 executor.execute(() -> {
-                        synchronized (missingClassLoader) {
-                            try {
-                                unblock.await();
-                            } catch (Throwable ignore) {
+                    synchronized (missingClassLoader) {
+                        try {
+                            unblock.await();
+                        } catch (Throwable ignore) {
 
-                            }
                         }
-                    });
+                    }
+                });
                 executor.execute(() -> {
                     synchronized (firstClassLoader) {
                         try {
@@ -101,7 +102,7 @@ public class IndentityLookup {
                         }
                     }
                 });
-                if (lastClassLoader != firstClassLoader) {
+                if (lastClassLoader != null) {
                     executor.execute(() -> {
                         synchronized (lastClassLoader) {
                             try {
