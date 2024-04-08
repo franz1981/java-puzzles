@@ -55,31 +55,9 @@ public class IndentityLookup {
             var classLoader = new CustomClassLoader();
             if (i == 0) {
                 firstClassLoader = classLoader;
-                if (disableHashCodeIntrinsics) {
-                    executor.execute(() -> {
-                        synchronized (firstClassLoader) {
-                            try {
-                                unblock.await();
-                            } catch (Throwable ignore) {
-
-                            }
-                        }
-                    });
-                }
             }
             if (i == size - 1) {
                 lastClassLoader = classLoader;
-                if (disableHashCodeIntrinsics && lastClassLoader != firstClassLoader) {
-                    executor.execute(() -> {
-                        synchronized (lastClassLoader) {
-                            try {
-                                unblock.await();
-                            } catch (Throwable ignore) {
-
-                            }
-                        }
-                    });
-                }
             }
             arrayMap.put(classLoader, new Object());
             hashMap.put(classLoader, new Object());
@@ -102,7 +80,7 @@ public class IndentityLookup {
                         }
                     }
                 });
-                if (lastClassLoader != null) {
+                if (lastClassLoader != null && firstClassLoader != lastClassLoader) {
                     executor.execute(() -> {
                         synchronized (lastClassLoader) {
                             try {
