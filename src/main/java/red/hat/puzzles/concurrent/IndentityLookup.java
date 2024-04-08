@@ -50,22 +50,50 @@ public class IndentityLookup {
         hashMap = new HashMap<>();
         // create N different instances of ClassLoader
         missingClassLoader = new CustomClassLoader();
-        if (disableHashCodeIntrinsics) {
-            executor.execute(() -> {
-                synchronized (missingClassLoader) {
-                    try {
-                        unblock.await();
-                    } catch (Throwable ignore) {
-
-                    }
-                }
-            });
-        }
         for (int i = 0; i < size; i++) {
             var classLoader = new CustomClassLoader();
+            if (i == 0) {
+                firstClassLoader = classLoader;
+                if (disableHashCodeIntrinsics) {
+                    executor.execute(() -> {
+                        synchronized (firstClassLoader) {
+                            try {
+                                unblock.await();
+                            } catch (Throwable ignore) {
+
+                            }
+                        }
+                    });
+                }
+            }
+            if (i == size - 1) {
+                lastClassLoader = classLoader;
+                if (disableHashCodeIntrinsics && lastClassLoader != firstClassLoader) {
+                    executor.execute(() -> {
+                        synchronized (lastClassLoader) {
+                            try {
+                                unblock.await();
+                            } catch (Throwable ignore) {
+
+                            }
+                        }
+                    });
+                }
+            }
+            arrayMap.put(classLoader, new Object());
+            hashMap.put(classLoader, new Object());
             if (disableHashCodeIntrinsics) {
                 executor.execute(() -> {
-                    synchronized (classLoader) {
+                        synchronized (missingClassLoader) {
+                            try {
+                                unblock.await();
+                            } catch (Throwable ignore) {
+
+                            }
+                        }
+                    });
+                executor.execute(() -> {
+                    synchronized (firstClassLoader) {
                         try {
                             unblock.await();
                         } catch (Throwable ignore) {
@@ -73,15 +101,18 @@ public class IndentityLookup {
                         }
                     }
                 });
+                if (lastClassLoader != firstClassLoader) {
+                    executor.execute(() -> {
+                        synchronized (lastClassLoader) {
+                            try {
+                                unblock.await();
+                            } catch (Throwable ignore) {
+
+                            }
+                        }
+                    });
+                }
             }
-            if (i == 0) {
-                firstClassLoader = classLoader;
-            }
-            if (i == size - 1) {
-                lastClassLoader = classLoader;
-            }
-            arrayMap.put(classLoader, new Object());
-            hashMap.put(classLoader, new Object());
         }
     }
 
@@ -118,11 +149,6 @@ public class IndentityLookup {
     @Benchmark
     public Object classLoaderHashCode() {
         return missingClassLoader.hashCode();
-    }
-
-    @Benchmark
-    public Object hashMapGetFirstParallel() {
-        return hashMap.get(firstClassLoader);
     }
 
     @TearDown
