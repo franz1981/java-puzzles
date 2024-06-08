@@ -108,7 +108,7 @@ public class CheckEscapingString {
             // filtering only the most significant bit of each byte
             // check if there's any non-ASCII char it will be in the high bytes
             long nonAscii = (batch1 | batch2) & 0xff80_ff80_ff80_ff80L;
-            boolean toEscape = (nonAscii | ((lessThan32 | notQuote | notBackslash) & 0x8080808080808080L )) != 0;
+            boolean toEscape = (nonAscii | ((lessThan32 | notQuote | notBackslash) & 0x8080808080808080L)) != 0;
             if (toEscape) {
                 return true;
             }
@@ -130,54 +130,4 @@ public class CheckEscapingString {
         // TODO let's be smart with the tail here!!!
         return false;
     }
-
-    /*
-    private static boolean needEscapeBranchless(String chars, byte[] output) {
-        int batches = chars.length() / 8;
-        int off = 0;
-        for (int i = 0; i < batches; i++) {
-            final long batch1 = (((long) chars.charAt(off)) << 48) |
-                    (((long) chars.charAt(off + 2)) << 32) |
-                    chars.charAt(off + 4) << 16 |
-                    chars.charAt(off + 6);
-            final long batch2 = (((long) chars.charAt(off + 1)) << 48) |
-                    (((long) chars.charAt(off + 3)) << 32) |
-                    chars.charAt(off + 5) << 16 |
-                    chars.charAt(off + 7);
-            // pack the 8 bytes into a long, regardless
-            long asciiValues = (batch1 << 8) | batch2;
-            // from now one we reason like the bytes are all ascii
-            // this is checking if we're withing the [0, 31] range: any negative value here have the 8th bit set
-            long notSpecialChars = asciiValues - 0x2020202020202020L;
-            // the xor makes sure that we have 0 only for the bytes we search for: subtracting 1 will make the 8th bit set
-            // table['"'] = '"'
-            notSpecialChars |= (asciiValues ^ 0x2222222222222222L) - 0x0101010101010101L;
-            // table['\\'] = '\\'
-            notSpecialChars |= (asciiValues ^ 0x5C5C5C5C5C5C5C5CL) - 0x0101010101010101L;
-            // filtering only the most significant bit of each byte
-            notSpecialChars &= 0x8080808080808080L;
-            // check if there's any non-ASCII char it will be in the high bytes
-            long nonAscii = (batch1 | batch2) & 0xff80_ff80_ff80_ff80L;
-            boolean toEscape = (nonAscii | notSpecialChars) != 0;
-            if (toEscape) {
-                return true;
-            }
-            if (LONG != null) {
-                LONG.set(output, off, asciiValues);
-            } else {
-                // copy back the bytes from asciiValues to output
-                output[off] = (byte) (asciiValues >> 56);
-                output[off + 1] = (byte) (asciiValues >> 48);
-                output[off + 2] = (byte) (asciiValues >> 40);
-                output[off + 3] = (byte) (asciiValues >> 32);
-                output[off + 4] = (byte) (asciiValues >> 24);
-                output[off + 5] = (byte) (asciiValues >> 16);
-                output[off + 6] = (byte) (asciiValues >> 8);
-                output[off + 7] = (byte) asciiValues;
-            }
-            off += 8;
-        }
-        // TODO let's be smart with the tail here!!!
-        return false;
-    }*/
 }
