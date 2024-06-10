@@ -56,8 +56,11 @@ public class CheckEscapingString {
 
     @Setup
     public void init() {
-        input = "1234567812345678";
+        input = " 09@P`p 09@P`p";
         output = new byte[input.length()];
+        if (needEscapeBranchy(input, output)) {
+            System.exit(1);
+        }
     }
 
     @Benchmark
@@ -82,18 +85,18 @@ public class CheckEscapingString {
         return false;
     }
 
-    private static boolean needEscapeBranchless(String chars, byte[] output) {
-        int batches = chars.length() / 8;
+    private static boolean needEscapeBranchless(String input, byte[] output) {
+        int batches = input.length() / 8;
         int off = 0;
         for (int i = 0; i < batches; i++) {
-            final long batch1 = (((long) chars.charAt(off)) << 48) |
-                    (((long) chars.charAt(off + 2)) << 32) |
-                    chars.charAt(off + 4) << 16 |
-                    chars.charAt(off + 6);
-            final long batch2 = (((long) chars.charAt(off + 1)) << 48) |
-                    (((long) chars.charAt(off + 3)) << 32) |
-                    chars.charAt(off + 5) << 16 |
-                    chars.charAt(off + 7);
+            final long batch1 = (((long) input.charAt(off)) << 48) |
+                    (((long) input.charAt(off + 2)) << 32) |
+                    input.charAt(off + 4) << 16 |
+                    input.charAt(off + 6);
+            final long batch2 = (((long) input.charAt(off + 1)) << 48) |
+                    (((long) input.charAt(off + 3)) << 32) |
+                    input.charAt(off + 5) << 16 |
+                    input.charAt(off + 7);
             // pack the 8 bytes into a long, regardless
             long asciiValues = (batch1 << 8) | batch2;
             // from now one we reason like the bytes are all ascii
@@ -112,22 +115,17 @@ public class CheckEscapingString {
             if (toEscape) {
                 return true;
             }
-            if (LONG != null) {
-                LONG.set(output, off, asciiValues);
-            } else {
-                // copy back the bytes from asciiValues to output
-                output[off] = (byte) (asciiValues >> 56);
-                output[off + 1] = (byte) (asciiValues >> 48);
-                output[off + 2] = (byte) (asciiValues >> 40);
-                output[off + 3] = (byte) (asciiValues >> 32);
-                output[off + 4] = (byte) (asciiValues >> 24);
-                output[off + 5] = (byte) (asciiValues >> 16);
-                output[off + 6] = (byte) (asciiValues >> 8);
-                output[off + 7] = (byte) asciiValues;
-            }
+            LONG.set(output, off, asciiValues);
             off += 8;
         }
-        // TODO let's be smart with the tail here!!!
+        // use a loop for the rest
+        for (int i = off; i < input.length(); i++) {
+            int ch = input.charAt(i);
+            if (ch > 0x7f || sOutputEscapes128[ch] != 0) {
+                return true;
+            }
+            output[i] = (byte) ch;
+        }
         return false;
     }
 }
