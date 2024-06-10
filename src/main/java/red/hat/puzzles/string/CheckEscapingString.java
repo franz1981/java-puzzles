@@ -6,6 +6,7 @@ import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
@@ -51,21 +52,40 @@ public class CheckEscapingString {
         sOutputEscapes128 = table;
     }
 
+    @Param({" 09@P`p 09@P`p", " 09@P`p ", " 09@P`p  09@P`p ",  " 09@P`p 09@P`p 09@P`p 09@P`p"})
     String input;
     byte[] output;
 
     @Setup
     public void init() {
-        input = " 09@P`p 09@P`p";
         output = new byte[input.length()];
-        if (needEscapeBranchy(input, output)) {
+        if (needEscapeLookupTable(input, output)) {
+            System.exit(1);
+        }
+        if (needEscapeSingleLessBranchy(input, output)) {
+            System.exit(1);
+        }
+        if (needEscapeSingleBranchy(input, output)) {
+            System.exit(1);
+        }
+        if (needEscapeBranchless(input, output)) {
             System.exit(1);
         }
     }
 
     @Benchmark
-    public boolean needEscapeBranchy() {
-        return needEscapeBranchy(input, output);
+    public boolean needEscapeSingleBranchy() {
+        return needEscapeSingleBranchy(input, output);
+    }
+
+    @Benchmark
+    public boolean needEscapeSingleLessBranchy() {
+        return needEscapeSingleLessBranchy(input, output);
+    }
+
+    @Benchmark
+    public boolean needEscapeLookupTable() {
+        return needEscapeLookupTable(input, output);
     }
 
 
@@ -74,7 +94,29 @@ public class CheckEscapingString {
         return needEscapeBranchless(input, output);
     }
 
-    private static boolean needEscapeBranchy(String input, byte[] output) {
+    private static boolean needEscapeSingleBranchy(String input, byte[] output) {
+        for (int i = 0; i < input.length(); i++) {
+            int ch = input.charAt(i);
+            if (ch > 0x7f || ch < 32 || ch == '"' || ch == '\\') {
+                return true;
+            }
+            output[i] = (byte) ch;
+        }
+        return false;
+    }
+
+    private static boolean needEscapeSingleLessBranchy(String input, byte[] output) {
+        for (int i = 0; i < input.length(); i++) {
+            int ch = input.charAt(i);
+            if (ch > 0x7f | ch < 32 | ch == '"' | ch == '\\') {
+                return true;
+            }
+            output[i] = (byte) ch;
+        }
+        return false;
+    }
+
+    private static boolean needEscapeLookupTable(String input, byte[] output) {
         for (int i = 0; i < input.length(); i++) {
             int ch = input.charAt(i);
             if (ch > 0x7f || sOutputEscapes128[ch] != 0) {
@@ -121,7 +163,7 @@ public class CheckEscapingString {
         // use a loop for the rest
         for (int i = off; i < input.length(); i++) {
             int ch = input.charAt(i);
-            if (ch > 0x7f || sOutputEscapes128[ch] != 0) {
+            if (ch > 0x7f || ch < 32 || ch == '"' || ch == '\\') {
                 return true;
             }
             output[i] = (byte) ch;
