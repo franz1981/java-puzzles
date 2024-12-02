@@ -1,6 +1,7 @@
 package red.hat.puzzles.concurrent;
 
 import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.CompilerControl;
 import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
@@ -39,6 +40,8 @@ public class IndentityLookup {
     private CountDownLatch unblock;
 
     private ExecutorService executor;
+
+    private Object next;
 
     private static final class CustomClassLoader extends ClassLoader {
     }
@@ -94,6 +97,23 @@ public class IndentityLookup {
             }
         }
     }
+
+    @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public Object enterExit(Blackhole bh) {
+        synchronized (missingClassLoader) {
+            Blackhole.consumeCPU(10);
+            bh.consume(missingClassLoader);
+        }
+        return missingClassLoader;
+    }
+    @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public int identityHashCode() {
+        this.next =  new Object();
+        return System.identityHashCode(next);
+    }
+
 
     @Benchmark
     public Object arrayMapGetMissing() {
