@@ -101,7 +101,7 @@ public class ReplaceWithUnderscores {
         return new String(reusableBytes, 0, size);
     }
 
-    @Param({"10000"})
+    @Param({"100", "10000"})
     private int samples;
 
     @Param({"33"})
