@@ -10,6 +10,7 @@
 
     <properties>
         <jmh-version>1.34</jmh-version>
+        <enable.preview></enable.preview>
     </properties>
 
     <dependencies>
@@ -55,7 +56,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
                     <compilerArgs>
-                        <compilerArg>--enable-preview</compilerArg>
+                        <compilerArg>${enable.preview}</compilerArg>
                     </compilerArgs>
                     <source>21</source>
                     <target>21</target>
@@ -63,4 +64,18 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>java-21-preview</id>
+            <activation>
+                <property>
+                    <name>java.version</name>
+                    <value>21</value>
+                </property>
+            </activation>
+            <properties>
+                <enable.preview>--enable-preview</enable.preview>
+            </properties>
+        </profile>
+    </profiles>
 </project>
