@@ -9,7 +9,7 @@
     <version>1.0-SNAPSHOT</version>
 
     <properties>
-        <jmh-version>1.34</jmh-version>
+        <jmh-version>1.37</jmh-version>
         <enable.preview></enable.preview>
     </properties>
 
@@ -32,7 +32,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.2.4</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
