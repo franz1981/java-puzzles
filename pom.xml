@@ -85,10 +85,7 @@
                         <configuration>
                             <source>${java.version}</source>
                             <target>${java.version}</target>
-                            <excludes>
-                                <exclude>**/shuffle/PolluteCopyTest.java</exclude>
-                                <exclude>**/shuffle/TestFill.java</exclude>
-                            </excludes>
+                            <!-- No exclusions needed for Java 21 - MemorySegment API is now stable -->
                         </configuration>
                     </plugin>
                 </plugins>
