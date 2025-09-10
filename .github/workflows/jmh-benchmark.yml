@@ -56,6 +56,14 @@ jobs:
       - name: Build project
         run: mvn clean package -DskipTests -Djava.version=${{ env.JAVA_VERSION }}
 
+      - name: Verify benchmark JAR was created
+        run: |
+          if [ ! -f target/benchmark.jar ]; then
+            echo "Error: benchmark.jar was not created"
+            exit 1
+          fi
+          echo "Benchmark JAR size: $(du -h target/benchmark.jar | cut -f1)"
+
       - name: Run JMH Benchmarks
         run: |
           java -jar target/benchmark.jar \
@@ -66,6 +74,15 @@ jobs:
             -rff benchmark_results_${{ runner.os }}.json \
             -rf json \
             ${{ env.BENCHMARK_PATTERN }}
+
+      - name: Verify benchmark results were generated
+        run: |
+          if [ ! -f benchmark_results_${{ runner.os }}.json ]; then
+            echo "Error: benchmark results file was not created"
+            exit 1
+          fi
+          echo "Benchmark results file size: $(du -h benchmark_results_${{ runner.os }}.json | cut -f1)"
+          echo "Number of benchmark results: $(jq length benchmark_results_${{ runner.os }}.json)"
 
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1

@@ -83,5 +83,35 @@
                 <enable.preview>--enable-preview</enable.preview>
             </properties>
         </profile>
+        <profile>
+            <id>java-pre-21</id>
+            <activation>
+                <property>
+                    <name>java.version</name>
+                    <value>!21</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>${maven.compiler.plugin.version}</version>
+                        <configuration>
+                            <compilerArgs>
+                                <compilerArg>${enable.preview}</compilerArg>
+                            </compilerArgs>
+                            <source>${java.version}</source>
+                            <target>${java.version}</target>
+                            <excludes>
+                                <exclude>**/loom/**</exclude>
+                                <exclude>**/shuffle/PolluteCopyTest.java</exclude>
+                                <exclude>**/shuffle/TestFill.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 </project>
