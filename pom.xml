@@ -69,13 +69,16 @@
     </build>
     <profiles>
         <profile>
-            <id>java-21</id>
+            <id>java-21-preview</id>
             <activation>
                 <property>
                     <name>java.version</name>
                     <value>21</value>
                 </property>
             </activation>
+            <properties>
+                <enable.preview>--enable-preview</enable.preview>
+            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -83,9 +86,11 @@
                         <artifactId>maven-compiler-plugin</artifactId>
                         <version>${maven.compiler.plugin.version}</version>
                         <configuration>
+                            <compilerArgs>
+                                <compilerArg>${enable.preview}</compilerArg>
+                            </compilerArgs>
                             <source>${java.version}</source>
                             <target>${java.version}</target>
-                            <!-- No exclusions needed for Java 21 - MemorySegment API is now stable -->
                         </configuration>
                     </plugin>
                 </plugins>
@@ -102,6 +107,22 @@
             <properties>
                 <enable.preview>--enable-preview</enable.preview>
             </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>${maven.compiler.plugin.version}</version>
+                        <configuration>
+                            <compilerArgs>
+                                <compilerArg>${enable.preview}</compilerArg>
+                            </compilerArgs>
+                            <source>${java.version}</source>
+                            <target>${java.version}</target>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
         <profile>
             <id>java-11</id>
