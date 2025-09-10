@@ -72,7 +72,7 @@
     </build>
     <profiles>
         <profile>
-            <id>java-21-preview</id>
+            <id>java-21</id>
             <activation>
                 <property>
                     <name>java.version</name>
@@ -80,7 +80,8 @@
                 </property>
             </activation>
             <properties>
-                <enable.preview>--enable-preview</enable.preview>
+                <!-- Only enable preview features for specific files that need it -->
+                <enable.preview></enable.preview>
             </properties>
         </profile>
         <profile>
