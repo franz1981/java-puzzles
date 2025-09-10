@@ -1,0 +1,89 @@
+---
+name: JMH Benchmark
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      java-version:
+        description: 'Java version to use'
+        required: false
+        default: '21'
+        type: choice
+        options:
+          - '11'
+          - '17'
+          - '21'
+          - '23'
+      benchmark-pattern:
+        description: 'JMH benchmark pattern to run (regex)'
+        required: false
+        default: '.*'
+        type: string
+
+jobs:
+  benchmark:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    env:
+      JAVA_VERSION: ${{ github.event.inputs.java-version || '21' }}
+      BENCHMARK_PATTERN: ${{ github.event.inputs.benchmark-pattern || '.*' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Build project
+        run: mvn clean package -DskipTests -Djava.version=${{ env.JAVA_VERSION }}
+
+      - name: Run JMH Benchmarks
+        run: |
+          java -jar target/benchmark.jar \
+            -f 1 \
+            -wi 3 \
+            -i 5 \
+            -tu ms \
+            -rff benchmark_results_${{ runner.os }}.json \
+            -rf json \
+            ${{ env.BENCHMARK_PATTERN }}
+
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: 'jmh'
+          output-file-path: benchmark_results_${{ runner.os }}.json
+          comment-on-alert: true
+          summary-always: true
+          alert-threshold: '150%'
+          fail-on-alert: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: >-
+            ${{ github.ref == 'refs/heads/main' ||
+                github.ref == 'refs/heads/master' }}
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: >-
+            benchmark-results-${{ matrix.os }}-java${{ env.JAVA_VERSION }}
+          path: benchmark_results_${{ runner.os }}.json
