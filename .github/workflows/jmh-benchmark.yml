@@ -54,7 +54,9 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
 
       - name: Build project
-        run: mvn clean package -DskipTests -Djava.version=${{ env.JAVA_VERSION }}
+        run: |
+          export PATH=$JAVA_HOME/bin:$PATH
+          mvn clean package -DskipTests -Djava.version=${{ env.JAVA_VERSION }}
 
       - name: Verify benchmark JAR was created
         run: |
@@ -66,7 +68,7 @@ jobs:
 
       - name: Run JMH Benchmarks
         run: |
-          java -jar target/benchmark.jar \
+          $JAVA_HOME/bin/java -jar target/benchmark.jar \
             -f 1 \
             -wi 3 \
             -i 5 \
