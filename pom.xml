@@ -61,9 +61,6 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven.compiler.plugin.version}</version>
                 <configuration>
-                    <compilerArgs>
-                        <compilerArg>${enable.preview}</compilerArg>
-                    </compilerArgs>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
                 </configuration>
@@ -79,10 +76,6 @@
                     <value>21</value>
                 </property>
             </activation>
-            <properties>
-                <!-- Only enable preview features for specific files that need it -->
-                <enable.preview></enable.preview>
-            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -90,9 +83,6 @@
                         <artifactId>maven-compiler-plugin</artifactId>
                         <version>${maven.compiler.plugin.version}</version>
                         <configuration>
-                            <compilerArgs>
-                                <compilerArg>${enable.preview}</compilerArg>
-                            </compilerArgs>
                             <source>${java.version}</source>
                             <target>${java.version}</target>
                             <excludes>
@@ -131,9 +121,6 @@
                         <artifactId>maven-compiler-plugin</artifactId>
                         <version>${maven.compiler.plugin.version}</version>
                         <configuration>
-                            <compilerArgs>
-                                <compilerArg>${enable.preview}</compilerArg>
-                            </compilerArgs>
                             <source>${java.version}</source>
                             <target>${java.version}</target>
                             <excludes>
@@ -161,9 +148,6 @@
                         <artifactId>maven-compiler-plugin</artifactId>
                         <version>${maven.compiler.plugin.version}</version>
                         <configuration>
-                            <compilerArgs>
-                                <compilerArg>${enable.preview}</compilerArg>
-                            </compilerArgs>
                             <source>${java.version}</source>
                             <target>${java.version}</target>
                             <excludes>
