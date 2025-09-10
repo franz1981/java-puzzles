@@ -83,6 +83,26 @@
                 <!-- Only enable preview features for specific files that need it -->
                 <enable.preview></enable.preview>
             </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>${maven.compiler.plugin.version}</version>
+                        <configuration>
+                            <compilerArgs>
+                                <compilerArg>${enable.preview}</compilerArg>
+                            </compilerArgs>
+                            <source>${java.version}</source>
+                            <target>${java.version}</target>
+                            <excludes>
+                                <exclude>**/shuffle/PolluteCopyTest.java</exclude>
+                                <exclude>**/shuffle/TestFill.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
         <profile>
             <id>java-23-preview</id>
