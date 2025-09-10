@@ -26,11 +26,7 @@ on:
 
 jobs:
   benchmark:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
 
     env:
       JAVA_VERSION: ${{ github.event.inputs.java-version || '21' }}
@@ -73,24 +69,24 @@ jobs:
             -wi 3 \
             -i 5 \
             -tu ms \
-            -rff benchmark_results_${{ runner.os }}.json \
+            -rff benchmark_results_macOS.json \
             -rf json \
             ${{ env.BENCHMARK_PATTERN }}
 
       - name: Verify benchmark results were generated
         run: |
-          if [ ! -f benchmark_results_${{ runner.os }}.json ]; then
+          if [ ! -f benchmark_results_macOS.json ]; then
             echo "Error: benchmark results file was not created"
             exit 1
           fi
-          echo "Benchmark results file size: $(du -h benchmark_results_${{ runner.os }}.json | cut -f1)"
-          echo "Number of benchmark results: $(jq length benchmark_results_${{ runner.os }}.json)"
+          echo "Benchmark results file size: $(du -h benchmark_results_macOS.json | cut -f1)"
+          echo "Number of benchmark results: $(jq length benchmark_results_macOS.json)"
 
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         with:
           tool: 'jmh'
-          output-file-path: benchmark_results_${{ runner.os }}.json
+          output-file-path: benchmark_results_macOS.json
           comment-on-alert: true
           summary-always: true
           alert-threshold: '150%'
@@ -104,5 +100,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: >-
-            benchmark-results-${{ matrix.os }}-java${{ env.JAVA_VERSION }}
-          path: benchmark_results_${{ runner.os }}.json
+            benchmark-results-macOS-java${{ env.JAVA_VERSION }}
+          path: benchmark_results_macOS.json
