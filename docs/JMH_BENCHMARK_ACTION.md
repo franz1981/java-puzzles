@@ -1,49 +1,49 @@
 # JMH Benchmark GitHub Action
 
-This repository includes a GitHub Actions workflow that integrates JMH (Java Microbenchmark Harness) benchmarks with [@benchmark-action/github-action-benchmark](https://github.com/benchmark-action/github-action-benchmark).
+This repository includes a GitHub Actions workflow that provides manual JMH (Java Microbenchmark Harness) benchmark execution with [@benchmark-action/github-action-benchmark](https://github.com/benchmark-action/github-action-benchmark).
 
 ## Features
 
-- ✅ **Automatic benchmark execution** on PRs and pushes to main/master branches
+- ✅ **Manual benchmark execution** with specific benchmark selection required
 - ✅ **Configurable Java versions** (11, 17, 21, 23) 
-- ✅ **Multi-platform support** (Ubuntu Linux and macOS including M1/M2)
-- ✅ **Flexible benchmark selection** via regex patterns
+- ✅ **macOS platform support** (optimized for stability and M1/M2 ARM architecture)
+- ✅ **Flexible benchmark selection** via exact names or regex patterns
 - ✅ **Performance regression detection** with customizable alert thresholds
 - ✅ **Results storage and visualization** through github-action-benchmark
 - ✅ **Artifact uploads** for detailed analysis
 
 ## Workflow Configuration
 
-The workflow is defined in `.github/workflows/jmh-benchmark.yml` and can be triggered in three ways:
+The workflow is defined in `.github/workflows/jmh-benchmark.yml` and **runs only when manually triggered** for better resource management and control.
 
-### 1. Automatic Triggers
-- **Pull Requests**: Benchmarks run automatically on PRs targeting `main` or `master`
-- **Push to main/master**: Benchmarks run on direct pushes to main branches
+### Manual Trigger (workflow_dispatch)
+To run benchmarks, you must manually trigger the workflow:
 
-### 2. Manual Trigger (workflow_dispatch)
-You can manually trigger the workflow with custom parameters:
-
-- **Java Version**: Choose from Java 11, 17, 21, or 23 (default: 21)
-- **Benchmark Pattern**: Regex pattern to select which benchmarks to run (default: `.*` for all)
+1. **Navigate to GitHub Actions tab** in the repository
+2. **Select "JMH Benchmark"** from the workflow list
+3. **Click "Run workflow"** button
+4. **Specify required parameters**:
+   - **benchmark-name** (required): Benchmark class or method pattern to run
+   - **java-version** (optional): Choose from Java 11, 17, 21, or 23 (default: 21)
 
 ## Usage Examples
 
-### Running All Benchmarks
-The workflow runs all benchmarks by default when triggered automatically or manually without parameters.
+### Benchmark Name Patterns
+When manually triggering the workflow, specify the benchmark pattern:
 
-### Running Specific Benchmarks
-When manually triggering the workflow, you can specify a regex pattern to run only certain benchmarks:
-
-- `.*String.*` - Run all string-related benchmarks
-- `.*Copy.*` - Run all copy-related benchmarks  
-- `AsciiCopy` - Run only the AsciiCopy benchmark
+- `LockCoarsening` - Run all benchmarks in the LockCoarsening class
+- `LockCoarsening.notReentrantField` - Run specific benchmark method
+- `ToLowerCaseAndDotted.toLowerCaseAndDottedBuilderReuse` - Run specific method
+- `.*String.*` - Run all string-related benchmarks (regex pattern)
+- `.*Copy.*` - Run all copy-related benchmarks (regex pattern)
+- `AsciiCopy` - Run only the AsciiCopy benchmark class
 
 ### Java Version Selection
-The workflow defaults to Java 21 (as configured in the project), but you can manually select:
+The workflow defaults to Java 21, but you can manually select:
 - Java 11 for older compatibility testing
 - Java 17 for LTS compatibility
-- Java 21 for latest features (default)
-- Java 23 for cutting-edge features
+- Java 21 for latest stable features (default)
+- Java 23 for cutting-edge preview features
 
 ## Benchmark Results
 
@@ -55,20 +55,16 @@ The workflow defaults to Java 21 (as configured in the project), but you can man
 
 ### Artifacts
 - Benchmark results are uploaded as workflow artifacts
-- Separate artifacts for each OS and Java version combination
+- Results include Java version and platform information in the artifact name
 - Results are in JSON format compatible with JMH output
 
 ## Platform Support
 
-### Ubuntu Linux (`ubuntu-latest`)
-- Standard GitHub-hosted runner
-- Good for general performance testing
-- Consistent environment for baseline measurements
-
 ### macOS (`macos-latest`) 
-- Includes support for M1/M2 Apple Silicon
-- Tests performance on ARM architecture
-- Important for cross-platform performance validation
+- GitHub-hosted runner optimized for stability
+- Includes support for M1/M2 Apple Silicon ARM architecture
+- Consistent performance characteristics for reliable benchmarking
+- Single-platform approach for reduced complexity and better resource management
 
 ## Customization
 
