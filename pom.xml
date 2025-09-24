@@ -57,8 +57,8 @@
                     <compilerArgs>
                         <compilerArg>${enable.preview}</compilerArg>
                     </compilerArgs>
-                    <source>21</source>
-                    <target>21</target>
+                    <source>22</source>
+                    <target>22</target>
                 </configuration>
             </plugin>
         </plugins>
