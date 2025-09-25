@@ -140,14 +140,31 @@ public class TypeProfileInvokeVirtual {
     }
 
     /**
-     * doModulus is a very tiny method that is already compiled (and likely inlined) into the different id() calls.
-     * With type profile pollution it should observe all 4 types (A, B, C, D) equally.<br>
-     * This benchmarking method is not warmed up in the setup phase and is going to use the already compiled version
-     * of doModulus while is not yet warmed up itself.<br>
-     * Once it is warmed-up it should be able to inline doModulus (which is very tiny) propagating the SINGLETON_A type
-     * and inlining A::base call without any type guards (since SINGLETON_A is static final).<br>
-     * The same should happen to the primitive argument "3" which is always the same value.<br>
-     * The logic of this is at https://github.com/openjdk/jdk/blob/jdk-26%2B16/src/hotspot/share/opto/doCall.cpp#L572-L674
+     * doModulus contains a virtual call to Base.base() and during the warmup with type pollution
+     * it's compiled with a type profile information on Base::base which contains 4 types.
+     * Once modulus is hot enough and is compiled, the doModulus call-site is evaluated for inlining
+     * and its type profile information for Base::base is overridden by the speculative type A of its parameter.
+     *
+     * - on https://github.com/openjdk/jdk/blob/2aafda1968f3fc8902f7d146a1cba72998aeb976/src/hotspot/share/opto/doCall.cpp#L674
+     *   the doModulus parameter type is propagated as speculative type: this happens in the caller (modulus) compilation once the doModulus call-site is processed
+     * - on https://github.com/openjdk/jdk/blob/2aafda1968f3fc8902f7d146a1cba72998aeb976/src/hotspot/share/opto/doCall.cpp#L195-L214 is where the
+     *   inlining decision to inline doModulus into modulus is made: it performs a deferred inlining decision
+     * - on https://github.com/openjdk/jdk/blob/2aafda1968f3fc8902f7d146a1cba72998aeb976/src/hotspot/share/opto/callGenerator.cpp#L524 is where the
+     *   refinement logic is applied while inlining doModulus into modulus i.e. it (re)uses the speculative type context
+     *   creating a refined inlined version of doModulus
+     * - on https://github.com/openjdk/jdk/blob/2aafda1968f3fc8902f7d146a1cba72998aeb976/src/hotspot/share/opto/doCall.cpp#L237-L246
+     *   the speculative type is used to treat the call to Base::base in the inlined version of doModulus as monomorphic
+     *
+     * NOTE:
+     * Why inlining is deferred?
+     * Hotspot perform incremental inlining:
+     * 1. to better exploit contextual type information
+     * 2. avoid node explosion
+     * 3. spread inlining work across compilation phases to reduce the memory pressure
+     *
+     * But it doesn't mean the timing to happen in a separate time from the caller compilation, just delayed
+     * later in the same process e.g. there's no need of "additional" invocations of a method to trigger inlining.
+     *
      */
     @Benchmark
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
