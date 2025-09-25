@@ -16,27 +16,30 @@ import org.openjdk.jmh.infra.Blackhole;
 
 import java.util.concurrent.TimeUnit;
 
+abstract class Base {
+
+    protected int base = 42;
+
+    public abstract int base();
+}
+
+/**
+ * This benchmark has been created to understand patterns like the one at https://github.com/franz1981/netty/blob/6984ba79327c8d9e2c1d6c4d9cd3304f845021c3/common/src/main/java/io/netty/util/Recycler.java#L306
+ * i.e. passing a known concrete type as a parameter of an inlineable method, expecting the call site to become
+ * monomorphic, despite the method itself has been compiled with a type profile containing multiple types.
+ */
+
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @Warmup(iterations = 5, time = 100, timeUnit = TimeUnit.MILLISECONDS)
 @Measurement(iterations = 5, time = 100, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(value = 2)
 @State(Scope.Benchmark)
-public class TypeProfileInvokeVirtual {
+public class TypeProfileInvokeVirtual extends Base {
 
-    private abstract static class Base {
-
-        protected int base = 42;
-
-        public abstract int base();
-    }
-
-    private static class A extends Base {
-
-        @Override
-        public int base() {
-            return base;
-        }
+    @Override
+    public int base() {
+        return base;
     }
 
     private static class B extends Base {
@@ -70,17 +73,17 @@ public class TypeProfileInvokeVirtual {
     @Param({"false", "true"})
     public boolean polluteTypeProfile;
 
-    private A a;
-    private Base base;
-    private static final A SINGLETON_A = new A();
+    private TypeProfileInvokeVirtual concreteTypeInstance;
+    private Base abstractTypeInstance;
+    private static final TypeProfileInvokeVirtual SINGLETON_CONCRETE_TYPE_INSTANCE = new TypeProfileInvokeVirtual();
 
     @Setup
     public void setup(Blackhole bh) {
         Base[] instances = new Base[4];
         int[] params = new int[]{3, 5, 7, 11};
-        a = new A();
-        base = a;
-        instances[0] = a;
+        concreteTypeInstance = this;
+        abstractTypeInstance = concreteTypeInstance;
+        instances[0] = concreteTypeInstance;
         if (polluteTypeProfile) {
             instances[1] = new B();
             instances[2] = new C();
@@ -129,16 +132,26 @@ public class TypeProfileInvokeVirtual {
     @Benchmark
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public int modulusSpeculativeTypeStaticFinal() {
-        return doModulus(SINGLETON_A, 3);
+        return doModulus(SINGLETON_CONCRETE_TYPE_INSTANCE, 3);
     }
 
     /**
-     * Same as modulusSpeculativeTypeStaticFinal but it needs to read the instance field "a" out from the benchmark state
+     * Same as modulusSpeculativeTypeStaticFinal but it needs to read the instance field out from the benchmark state
      */
     @Benchmark
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public int modulusSpeculativeTypeInstanceField() {
-        return doModulus(a, 3);
+        return doModulus(concreteTypeInstance, 3);
+    }
+
+    /**
+     * Same as modulusSpeculativeTypeInstanceField although this should be passed as a register parameter
+     * and not read from an instance field
+     */
+    @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public int modulusSpeculativeTypeThis() {
+        return doModulus(this, 3);
     }
 
     /**
@@ -150,6 +163,6 @@ public class TypeProfileInvokeVirtual {
     @Benchmark
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public int modulusNoSpeculativeTypeInstanceField() {
-        return doModulus(base, 3);
+        return doModulus(abstractTypeInstance, 3);
     }
 }
