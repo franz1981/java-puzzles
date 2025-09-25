@@ -10,7 +10,7 @@
 
     <properties>
         <jmh-version>1.37</jmh-version>
-        <enable.preview></enable.preview>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <dependencies>
@@ -31,7 +31,24 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.1</version>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.openjdk.jmh</groupId>
+                            <artifactId>jmh-generator-annprocess</artifactId>
+                            <version>${jmh-version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                    <source>24</source>
+                    <target>24</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.1</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -39,10 +56,9 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
-                            <finalName>benchmark</finalName>
+                            <finalName>benchmarks</finalName>
                             <transformers>
-                                <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>org.openjdk.jmh.Main</mainClass>
                                 </transformer>
                             </transformers>
@@ -50,31 +66,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <compilerArgs>
-                        <compilerArg>${enable.preview}</compilerArg>
-                    </compilerArgs>
-                    <source>22</source>
-                    <target>22</target>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
-    <profiles>
-        <profile>
-            <id>java-21-preview</id>
-            <activation>
-                <property>
-                    <name>java.version</name>
-                    <value>21</value>
-                </property>
-            </activation>
-            <properties>
-                <enable.preview>--enable-preview</enable.preview>
-            </properties>
-        </profile>
-    </profiles>
 </project>
