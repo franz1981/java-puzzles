@@ -101,7 +101,6 @@ public class TypeProfileInvokeVirtual extends Base {
             instances[2] = concreteTypeInstance;
             instances[3] = concreteTypeInstance;
         }
-        // let's get doModulus compiled with a type profile containing 1 or 4 types in
         for (int warmup = 0; warmup < 11_000; warmup++) {
             for (int i = 0; i < instances.length; i++) {
                 bh.consume(doModulus(instances[i], params[i]));
@@ -113,7 +112,7 @@ public class TypeProfileInvokeVirtual extends Base {
     /**
      * We end up optimizing Base::base during the compilation of this method, while inlining doModulus and the call to Base::base
      * <pre>
-     * Parse::do_call doCall.cpp:588                    <------ before optimizing virtual call Base::base it passes the runtime receiverNode
+     * Parse::do_call doCall.cpp:588                    <------ before optimizing virtual call Base::base it uses receiverNode
      * Parse::do_one_bytecode parse2.cpp:2723
      * Parse::do_one_block parse1.cpp:1593
      * Parse::do_all_blocks parse1.cpp:724
