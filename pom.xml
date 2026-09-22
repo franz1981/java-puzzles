@@ -9,7 +9,13 @@
     <version>1.0-SNAPSHOT</version>
 
     <properties>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
+        <java.version>21</java.version>
         <jmh-version>1.37</jmh-version>
+        <maven.compiler.plugin.version>3.14.1</maven.compiler.plugin.version>
+        <maven.shade.plugin.version>3.6.1</maven.shade.plugin.version>
+        <enable.preview></enable.preview>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -32,7 +38,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.1</version>
+                <version>${maven.compiler.plugin.version}</version>
                 <configuration>
                     <annotationProcessorPaths>
                         <path>
@@ -41,14 +47,14 @@
                             <version>${jmh-version}</version>
                         </path>
                     </annotationProcessorPaths>
-                    <source>24</source>
-                    <target>24</target>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.6.1</version>
+                <version>${maven.shade.plugin.version}</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -68,4 +74,116 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>java-21-preview</id>
+            <activation>
+                <property>
+                    <name>java.version</name>
+                    <value>21</value>
+                </property>
+            </activation>
+            <properties>
+                <enable.preview>--enable-preview</enable.preview>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>${maven.compiler.plugin.version}</version>
+                        <configuration>
+                            <compilerArgs>
+                                <compilerArg>${enable.preview}</compilerArg>
+                            </compilerArgs>
+                            <source>${java.version}</source>
+                            <target>${java.version}</target>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>java-23-preview</id>
+            <activation>
+                <property>
+                    <name>java.version</name>
+                    <value>23</value>
+                </property>
+            </activation>
+            <properties>
+                <enable.preview>--enable-preview</enable.preview>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>${maven.compiler.plugin.version}</version>
+                        <configuration>
+                            <compilerArgs>
+                                <compilerArg>${enable.preview}</compilerArg>
+                            </compilerArgs>
+                            <source>${java.version}</source>
+                            <target>${java.version}</target>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>java-11</id>
+            <activation>
+                <property>
+                    <name>java.version</name>
+                    <value>11</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>${maven.compiler.plugin.version}</version>
+                        <configuration>
+                            <source>${java.version}</source>
+                            <target>${java.version}</target>
+                            <excludes>
+                                <exclude>**/loom/**</exclude>
+                                <exclude>**/shuffle/PolluteCopyTest.java</exclude>
+                                <exclude>**/shuffle/TestFill.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>java-17</id>
+            <activation>
+                <property>
+                    <name>java.version</name>
+                    <value>17</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>${maven.compiler.plugin.version}</version>
+                        <configuration>
+                            <source>${java.version}</source>
+                            <target>${java.version}</target>
+                            <excludes>
+                                <exclude>**/loom/**</exclude>
+                                <exclude>**/shuffle/PolluteCopyTest.java</exclude>
+                                <exclude>**/shuffle/TestFill.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

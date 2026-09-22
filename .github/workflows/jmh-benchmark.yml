@@ -1,0 +1,99 @@
+---
+name: JMH Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      benchmark-name:
+        description: 'JMH benchmark name/pattern to run (regex)'
+        required: true
+        type: string
+      java-version:
+        description: 'Java version to use'
+        required: false
+        default: '21'
+        type: choice
+        options:
+          - '11'
+          - '17'
+          - '21'
+          - '23'
+
+jobs:
+  benchmark:
+    runs-on: macos-latest
+
+    env:
+      JAVA_VERSION: ${{ github.event.inputs.java-version || '21' }}
+      BENCHMARK_NAME: ${{ github.event.inputs.benchmark-name }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Build project
+        run: |
+          export PATH=$JAVA_HOME/bin:$PATH
+          mvn clean package -DskipTests -Djava.version=${{ env.JAVA_VERSION }}
+
+      - name: Verify benchmark JAR was created
+        run: |
+          if [ ! -f target/benchmark.jar ]; then
+            echo "Error: benchmark.jar was not created"
+            exit 1
+          fi
+          echo "Benchmark JAR size: $(du -h target/benchmark.jar | cut -f1)"
+
+      - name: Run JMH Benchmarks
+        run: |
+          $JAVA_HOME/bin/java -jar target/benchmark.jar \
+            -f 1 \
+            -wi 3 \
+            -i 5 \
+            -tu ms \
+            -rff benchmark_results_macOS.json \
+            -rf json \
+            ${{ env.BENCHMARK_NAME }}
+
+      - name: Verify benchmark results were generated
+        run: |
+          if [ ! -f benchmark_results_macOS.json ]; then
+            echo "Error: benchmark results file was not created"
+            exit 1
+          fi
+          echo "Benchmark results file size: $(du -h benchmark_results_macOS.json | cut -f1)"
+          echo "Number of benchmark results: $(jq length benchmark_results_macOS.json)"
+
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: 'jmh'
+          output-file-path: benchmark_results_macOS.json
+          comment-on-alert: true
+          summary-always: true
+          alert-threshold: '150%'
+          fail-on-alert: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: >-
+            ${{ github.ref == 'refs/heads/main' ||
+                github.ref == 'refs/heads/master' }}
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: >-
+            benchmark-results-macOS-java${{ env.JAVA_VERSION }}
+          path: benchmark_results_macOS.json

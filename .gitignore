@@ -1,3 +1,6 @@
 /target/
 /java-puzzles.iml
 /.idea/
+**/benchmark_results_*.json
+**/test_results.json
+dependency-reduced-pom.xml
